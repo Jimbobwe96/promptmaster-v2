@@ -1,6 +1,4 @@
 # promptmaster-v2
-
-## Overview
 PromptMaster is an innovative AI-powered game that pioneers an entirely new usage of AI tools — guessing the *prompt* used to make them.
 
 ## Tech Stack
