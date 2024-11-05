@@ -6,11 +6,10 @@ export const useSocket = () => {
 
   useEffect(() => {
     console.log("Initializing socket connection...");
-    console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+    console.log("API URL:", process.env.NEXT_PUBLIC_BACKEND_URL);
 
     socket.current = io(
-      "http://localhost:4000",
-      // process.env.NEXT_PUBLIC_API_URL!.replace("backend", "localhost"),
+      process.env.NEXT_PUBLIC_BACKEND_URL!.replace("backend", "localhost"),
       {
         transports: ["websocket"],
         autoConnect: true,
