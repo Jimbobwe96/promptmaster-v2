@@ -1,0 +1,14 @@
+{
+  "name": "promptmaster",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker-compose up",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspaces"
+  }
+}
