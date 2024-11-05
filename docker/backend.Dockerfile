@@ -2,7 +2,7 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy root package.json and workspace files
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
 COPY packages/shared/package*.json ./packages/shared/
@@ -13,9 +13,12 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build only the backend
+# Build shared package
+RUN cd packages/shared && npm run build
+
+# Build backend
 RUN cd apps/backend && npm run build
 
 EXPOSE 4000
 
-CMD ["npm", "start", "--prefix", "apps/backend"]
+CMD ["npm", "run", "--prefix", "apps/backend", "start"]

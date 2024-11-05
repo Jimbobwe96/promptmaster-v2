@@ -2,19 +2,23 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only frontend package files first
-COPY apps/frontend/package*.json ./
+# Copy root package.json and workspace files
+COPY package*.json ./
+COPY apps/frontend/package*.json ./apps/frontend/
+COPY packages/shared/package*.json ./packages/shared/
 
-# Install frontend dependencies
+# Install dependencies
 RUN npm install
 
-# Copy the rest of the frontend code
-COPY apps/frontend ./
+# Copy source code
+COPY . .
 
-# Build the Next.js app
-RUN npm run build
+# Build shared package
+RUN cd packages/shared && npm run build
+
+# Build frontend
+RUN cd apps/frontend && npm run build
 
 EXPOSE 3000
 
-# Run Next.js start command
-CMD ["npm", "start"]
+CMD ["npm", "run", "--prefix", "apps/frontend", "start"]

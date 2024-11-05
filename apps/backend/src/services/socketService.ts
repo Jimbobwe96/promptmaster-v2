@@ -1,29 +1,47 @@
-import { Server, Socket } from 'socket.io';
+import { Server as HTTPServer } from 'http';
+import { Server as SocketIOServer, Socket } from 'socket.io';
 
 export class SocketService {
-  private io: Server;
+  private io: SocketIOServer;
 
-  constructor(io: Server) {
-    this.io = io;
-    this.setupEventHandlers = this.setupEventHandlers.bind(this);
+  constructor(server: HTTPServer) {
+    console.log('Initializing SocketService...');
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+
+    this.io = new SocketIOServer(server, {
+      cors: {
+        origin: process.env.FRONTEND_URL,
+        methods: ['GET', 'POST'],
+        credentials: true,
+      },
+      transports: ['websocket'],
+    });
+
+    this.setupEventHandlers();
   }
 
-  setupEventHandlers(socket: Socket) {
-    socket.on('joinLobby', (lobbyId: string) => {
-      socket.join(lobbyId);
-      this.io.to(lobbyId).emit('playerJoined', { socketId: socket.id });
+  private setupEventHandlers(): void {
+    console.log('Setting up Socket.io event handlers...');
+
+    this.io.on('connection', (socket: Socket) => {
+      console.log(`Client connected: ${socket.id}`);
+
+      socket.on('ping', () => {
+        console.log(`Received ping from ${socket.id}`);
+        socket.emit('pong');
+      });
+
+      socket.on('disconnect', () => {
+        console.log(`Client disconnected: ${socket.id}`);
+      });
     });
 
-    socket.on('submitPrompt', (data) => {
-      // Handle prompt submission
+    this.io.on('connect_error', (err) => {
+      console.error('Socket.io server error:', err.message);
     });
+  }
 
-    socket.on('submitGuess', (data) => {
-      // Handle guess submission
-    });
-
-    socket.on('disconnect', () => {
-      // Handle disconnection
-    });
+  public getIO(): SocketIOServer {
+    return this.io;
   }
 }
