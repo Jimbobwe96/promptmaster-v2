@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+// import Link from "next/link";
 
 export default function Home() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -103,7 +103,7 @@ export default function Home() {
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-2 rounded-lg border border-slate-200 
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 text-[#1E293B]
                            focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
                   required
                 />
@@ -149,7 +149,7 @@ export default function Home() {
                   value={lobbyCode}
                   onChange={(e) => setLobbyCode(e.target.value)}
                   placeholder="Enter 6-digit code"
-                  className="w-full px-4 py-2 rounded-lg border border-slate-200 
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 text-[#1E293B]
                            focus:outline-none focus:ring-2 focus:ring-[#F97066] focus:border-transparent"
                   required
                   maxLength={6}
@@ -168,7 +168,7 @@ export default function Home() {
                   value={joinName}
                   onChange={(e) => setJoinName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-2 rounded-lg border border-slate-200 
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 text-[#1E293B]
                            focus:outline-none focus:ring-2 focus:ring-[#F97066] focus:border-transparent"
                   required
                 />
