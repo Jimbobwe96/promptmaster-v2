@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useSocket } from "@/hooks/useSocket";
+import type { LobbyError, Lobby } from "@promptmaster/shared";
+
+const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
 export default function Home() {
+  const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -12,7 +17,39 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { connect, isConnected, error: socketError, emit } = useSocket();
+  const { connect, isConnected, emit, socket } = useSocket();
+
+  // Handle socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLobbyCreated = (lobby: Lobby) => {
+      setIsLoading(false);
+      setError(null);
+      router.push(`/lobby/${lobby.code}`);
+    };
+
+    const handleLobbyJoined = (lobby: Lobby) => {
+      setIsLoading(false);
+      setError(null);
+      router.push(`/lobby/${lobby.code}`);
+    };
+
+    const handleError = (error: LobbyError) => {
+      setIsLoading(false);
+      setError(error.message);
+    };
+
+    socket.on("lobby:created", handleLobbyCreated);
+    socket.on("lobby:joined", handleLobbyJoined);
+    socket.on("lobby:error", handleError);
+
+    return () => {
+      socket.off("lobby:created", handleLobbyCreated);
+      socket.off("lobby:joined", handleLobbyJoined);
+      socket.off("lobby:error", handleError);
+    };
+  }, [router, socket]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,17 +59,27 @@ export default function Home() {
     setError(null);
 
     try {
-      console.log("Attempting to connect...");
-      await connect();
-      console.log("Connection successful");
-      emit("ping");
-      console.log("Ping emitted");
-      setIsLoading(false);
-      setIsCreateModalOpen(false);
+      // Set up connection timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Connection timed out. Please try again.")),
+          CONNECTION_TIMEOUT
+        );
+      });
+
+      // Try to connect with timeout
+      await Promise.race([connect(), timeoutPromise]);
+
+      // If we get here, connection was successful
+      emit("lobby:create", createName.trim());
     } catch (err) {
-      console.error("Connection error:", err);
-      setError("Failed to connect to server. Please try again.");
       setIsLoading(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to connect to server. Please try again."
+      );
+      setIsCreateModalOpen(false);
     }
   };
 
@@ -44,14 +91,27 @@ export default function Home() {
     setError(null);
 
     try {
-      await connect();
-      emit("ping");
-      console.log("Socket connected, ready for lobby join");
-      setIsLoading(false);
-      setIsJoinModalOpen(false);
+      // Set up connection timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Connection timed out. Please try again.")),
+          CONNECTION_TIMEOUT
+        );
+      });
+
+      // Try to connect with timeout
+      await Promise.race([connect(), timeoutPromise]);
+
+      // If we get here, connection was successful
+      emit("lobby:join", lobbyCode.trim(), joinName.trim());
     } catch (err) {
-      setError("Failed to connect to server. Please try again.");
       setIsLoading(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to connect to server. Please try again."
+      );
+      setIsJoinModalOpen(false);
     }
   };
 
@@ -144,9 +204,9 @@ export default function Home() {
                   disabled={isLoading}
                 />
               </div>
-              {(error || socketError) && (
+              {error && (
                 <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                  {error || socketError?.message}
+                  {error}
                 </div>
               )}
               <button
@@ -248,9 +308,9 @@ export default function Home() {
                   disabled={isLoading}
                 />
               </div>
-              {(error || socketError) && (
+              {error && (
                 <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                  {error || socketError?.message}
+                  {error}
                 </div>
               )}
               <button

@@ -12,10 +12,34 @@ interface UseSocketProps {
   autoConnect?: boolean;
 }
 
+interface UseSocketReturn {
+  socket: SocketType | null;
+  isConnected: boolean;
+  error: Error | null;
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  emit: <Event extends keyof ClientToServerEvents>(
+    event: Event,
+    ...args: Parameters<ClientToServerEvents[Event]>
+  ) => void;
+  on: <Event extends keyof ServerToClientEvents>(
+    event: Event,
+    callback: Parameters<ServerToClientEvents[Event]> extends []
+      ? () => void
+      : (...args: Parameters<ServerToClientEvents[Event]>) => void
+  ) => void;
+  off: <Event extends keyof ServerToClientEvents>(
+    event: Event,
+    callback?: Parameters<ServerToClientEvents[Event]> extends []
+      ? () => void
+      : (...args: Parameters<ServerToClientEvents[Event]>) => void
+  ) => void;
+}
+
 export const useSocket = ({
   url = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
   autoConnect = false,
-}: UseSocketProps = {}) => {
+}: UseSocketProps = {}): UseSocketReturn => {
   const socketRef = useRef<SocketType | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);

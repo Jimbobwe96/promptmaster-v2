@@ -4,7 +4,7 @@ export interface LobbyPlayer {
   username: string; // 1-25 chars, unique in lobby
   isHost: boolean;
   connected: boolean; // For reconnection window
-  lastSeen?: Date; // For tracking disconnections
+  lastSeen?: Date; // For tracking disconnections (30 second window)
 }
 
 export interface LobbySettings {
@@ -17,7 +17,7 @@ export interface Lobby {
   hostId: string; // Socket ID of host
   players: LobbyPlayer[];
   settings: LobbySettings;
-  status: "waiting" | "playing";
+  status: LobbyStatus;
   createdAt: Date; // For potential lobby lifetime limiting
 }
 
@@ -32,13 +32,7 @@ export interface GameRound {
     score?: number; // 0-100
   }[];
   timeRemaining: number;
-  status:
-    | "waiting"
-    | "prompting"
-    | "generating"
-    | "guessing"
-    | "scoring"
-    | "results";
+  status: RoundStatus;
 }
 
 export interface GameState {
@@ -50,18 +44,15 @@ export interface GameState {
     playerId: string;
     totalScore: number;
   }[];
-  status: "lobby" | "playing" | "finished";
 }
 
 // Socket Event Types
 export interface ServerToClientEvents {
-  pong: () => void;
-
   // Lobby Events
+  "lobby:created": (lobby: Lobby) => void;
+  "lobby:joined": (lobby: Lobby) => void;
   "lobby:updated": (lobby: Lobby) => void;
-  "lobby:player_joined": (player: LobbyPlayer) => void;
-  "lobby:player_left": (playerId: string) => void;
-  "lobby:settings_changed": (settings: LobbySettings) => void;
+  "lobby:closed": (reason: string) => void;
   "lobby:error": (error: LobbyError) => void;
 
   // Game Events
@@ -75,20 +66,36 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  ping: () => void;
-
   // Lobby Events
   "lobby:create": (username: string) => void;
   "lobby:join": (code: string, username: string) => void;
   "lobby:leave": () => void;
-  "lobby:kick_player": (playerId: string) => void;
   "lobby:update_settings": (settings: Partial<LobbySettings>) => void;
 
+  // Host-only Events
+  "lobby:start_game": () => void;
+  "lobby:kick_player": (playerId: string) => void;
+
   // Game Events
-  "game:start": () => void;
   "game:submit_prompt": (prompt: string) => void;
   "game:submit_guess": (guess: string) => void;
 }
+
+// Status Types
+export type LobbyStatus =
+  | "waiting" // Players can join, game hasn't started
+  | "starting" // Brief transition state when game is being initialized
+  | "playing" // Game is in progress
+  | "finished" // Game has ended
+  | "inactive"; // Lobby timed out or manually closed
+
+export type RoundStatus =
+  | "waiting"
+  | "prompting"
+  | "generating"
+  | "guessing"
+  | "scoring"
+  | "results";
 
 // Error Types
 export type LobbyErrorType =
@@ -100,7 +107,9 @@ export type LobbyErrorType =
   | "NOT_HOST"
   | "PLAYER_NOT_FOUND"
   | "MIN_PLAYERS_NOT_MET"
-  | "INVALID_SETTINGS";
+  | "INVALID_SETTINGS"
+  | "CONNECTION_ERROR"
+  | "SERVER_ERROR";
 
 export interface LobbyError {
   type: LobbyErrorType;
@@ -119,12 +128,8 @@ export const LOBBY_CONSTRAINTS = {
   MAX_ROUNDS_PER_PLAYER: 4,
   MIN_TIME_LIMIT: 5,
   MAX_TIME_LIMIT: 30,
+  RECONNECTION_WINDOW: 30, // seconds
 } as const;
-
-// Utility Types
-export type LobbyStatus = Lobby["status"];
-export type GameStatus = GameState["status"];
-export type RoundStatus = GameRound["status"];
 
 // Helper type for partial settings updates
 export type LobbySettingsUpdate = Partial<LobbySettings>;
