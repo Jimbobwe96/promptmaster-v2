@@ -55,6 +55,8 @@ export interface GameState {
 
 // Socket Event Types
 export interface ServerToClientEvents {
+  pong: () => void;
+
   // Lobby Events
   "lobby:updated": (lobby: Lobby) => void;
   "lobby:player_joined": (player: LobbyPlayer) => void;
@@ -73,6 +75,8 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
+  ping: () => void;
+
   // Lobby Events
   "lobby:create": (username: string) => void;
   "lobby:join": (code: string, username: string) => void;
