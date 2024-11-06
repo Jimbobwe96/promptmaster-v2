@@ -120,6 +120,7 @@ export const useSocket = ({
         ? () => void
         : (...args: Parameters<ServerToClientEvents[Event]>) => void
     ) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       socketRef.current?.on(event, callback as any);
     },
     []
@@ -134,6 +135,7 @@ export const useSocket = ({
         : (...args: Parameters<ServerToClientEvents[Event]>) => void
     ) => {
       if (callback) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         socketRef.current?.off(event, callback as any);
       } else {
         socketRef.current?.off(event);

@@ -17,7 +17,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { connect, isConnected, emit, socket } = useSocket();
+  const { connect, emit, socket } = useSocket();
 
   // Handle socket events
   useEffect(() => {
