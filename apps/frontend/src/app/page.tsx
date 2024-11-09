@@ -138,11 +138,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { useSocket } from "@/hooks/useSocket";
-import type { LobbyError, Lobby } from "@promptmaster/shared";
+import { useState } from "react";
+// import type { LobbyError, Lobby } from "@promptmaster/shared";
 
-const CONNECTION_TIMEOUT = 10000; // 10 seconds
+// const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
 export default function Home() {
   const router = useRouter();
@@ -154,43 +153,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // CHANGED: Removed error from destructuring since we handle errors ourselves
-  const { connect, emit, socket } = useSocket();
-
-  // Handle socket events
-  useEffect(() => {
-    if (!socket) return;
-
-    // CHANGED: Moved error handler first and simplified handlers
-    const handleError = (error: LobbyError) => {
-      setIsLoading(false);
-      setError(error.message);
-    };
-
-    const handleLobbyCreated = (lobby: Lobby) => {
-      setIsLoading(false);
-      setError(null);
-      setIsCreateModalOpen(false); // Close modal before redirect
-      router.push(`/lobby/${lobby.code}`);
-    };
-
-    const handleLobbyJoined = (lobby: Lobby) => {
-      setIsLoading(false);
-      setError(null);
-      setIsJoinModalOpen(false); // Close modal before redirect
-      router.push(`/lobby/${lobby.code}`);
-    };
-
-    socket.on("lobby:error", handleError);
-    socket.on("lobby:created", handleLobbyCreated);
-    socket.on("lobby:joined", handleLobbyJoined);
-
-    return () => {
-      socket.off("lobby:error", handleError);
-      socket.off("lobby:created", handleLobbyCreated);
-      socket.off("lobby:joined", handleLobbyJoined);
-    };
-  }, [router, socket]); // CHANGED: Removed createName and joinName from deps as they're not needed
+  // REMOVED: socket-related code and effects
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,27 +163,39 @@ export default function Home() {
     setError(null);
 
     try {
-      // Set up connection timeout
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(
-          () => reject(new Error("Connection timed out. Please try again.")),
-          CONNECTION_TIMEOUT
-        );
+      console.log("Attempting to create lobby...");
+      const response = await fetch("http://localhost:4000/api/lobbies/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: createName.trim() }),
       });
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
 
-      // Try to connect with timeout
-      await Promise.race([connect(), timeoutPromise]);
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Error response:", errorText);
+        throw new Error(error.message || "Failed to create lobby");
+      }
 
-      // If we get here, connection was successful
-      emit("lobby:create", createName.trim());
+      const lobby = await response.json();
+
+      // Store session data
+      const session = {
+        code: lobby.code,
+        username: createName.trim(),
+        isHost: true,
+        joinedAt: new Date().toISOString(),
+      };
+      sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
+
+      // Close modal before redirect
+      setIsCreateModalOpen(false);
+      router.push(`/lobby/${lobby.code}`);
     } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create lobby");
+    } finally {
       setIsLoading(false);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to connect to server. Please try again."
-      );
-      // REMOVED: setIsCreateModalOpen(false) - keep modal open on error
     }
   };
 
@@ -232,27 +207,38 @@ export default function Home() {
     setError(null);
 
     try {
-      // Set up connection timeout
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(
-          () => reject(new Error("Connection timed out. Please try again.")),
-          CONNECTION_TIMEOUT
-        );
+      const response = await fetch("/api/lobbies/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: joinName.trim(),
+          code: lobbyCode.trim(),
+        }),
       });
 
-      // Try to connect with timeout
-      await Promise.race([connect(), timeoutPromise]);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to join lobby");
+      }
 
-      // If we get here, connection was successful
-      emit("lobby:join", lobbyCode.trim(), joinName.trim());
+      const lobby = await response.json();
+
+      // Store session data
+      const session = {
+        code: lobby.code,
+        username: joinName.trim(),
+        isHost: false,
+        joinedAt: new Date().toISOString(),
+      };
+      sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
+
+      // Close modal before redirect
+      setIsJoinModalOpen(false);
+      router.push(`/lobby/${lobby.code}`);
     } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to join lobby");
+    } finally {
       setIsLoading(false);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to connect to server. Please try again."
-      );
-      // REMOVED: setIsJoinModalOpen(false) - keep modal open on error
     }
   };
 

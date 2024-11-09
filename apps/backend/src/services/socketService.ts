@@ -4,13 +4,11 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   Lobby,
-  LobbyPlayer,
   LobbyError,
   LobbyErrorType,
 } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
-import crypto from 'crypto';
 
 type SocketWithData = Socket<ClientToServerEvents, ServerToClientEvents>;
 
@@ -18,8 +16,6 @@ export class SocketService {
   private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 
   constructor(server: HTTPServer) {
-    console.log('Initializing SocketService...');
-
     this.io = new SocketIOServer(server, {
       cors: {
         origin: process.env.FRONTEND_URL,
@@ -32,41 +28,13 @@ export class SocketService {
     this.setupEventHandlers();
   }
 
-  private generateLobbyCode(): string {
-    // Generate a random 6-digit code
-    return crypto.randomInt(100000, 999999).toString();
-  }
-
-  private async createLobby(hostId: string, username: string): Promise<Lobby> {
-    const code = this.generateLobbyCode();
-
-    const lobby: Lobby = {
-      code,
-      hostId,
-      players: [
-        {
-          id: hostId,
-          username,
-          isHost: true,
-          connected: true,
-        },
-      ],
-      settings: {
-        roundsPerPlayer: 2, // Default settings
-        timeLimit: 30,
-      },
-      status: 'waiting',
-      createdAt: new Date(),
-    };
-
-    // Store in Redis with 24h expiry
-    await redisClient.setEx(
-      `lobby:${code}`,
-      24 * 60 * 60, // 24 hours
-      JSON.stringify(lobby)
-    );
-
-    return lobby;
+  private emitError(
+    socket: SocketWithData,
+    type: LobbyErrorType,
+    message: string
+  ) {
+    const error: LobbyError = { type, message };
+    socket.emit('lobby:error', error);
   }
 
   private async getLobby(code: string): Promise<Lobby | null> {
@@ -82,134 +50,74 @@ export class SocketService {
     );
   }
 
-  private emitError(
-    socket: SocketWithData,
-    type: LobbyErrorType,
-    message: string
-  ) {
-    const error: LobbyError = { type, message };
-    socket.emit('lobby:error', error);
+  private async verifyUsernameReservation(
+    code: string,
+    username: string
+  ): Promise<boolean> {
+    const reservation = await redisClient.get(
+      `lobby:${code}:username:${username}`
+    );
+    return reservation === 'reserved';
   }
 
   private setupEventHandlers(): void {
-    console.log('Setting up Socket.io event handlers...');
+    this.io.on('connection', async (socket: SocketWithData) => {
+      console.log(`Socket connected: ${socket.id}`);
 
-    this.io.on('connection', (socket: SocketWithData) => {
-      console.log(`Client connected: ${socket.id}`);
-
-      // Handle lobby creation
-      socket.on('lobby:create', async (username: string) => {
+      // Handle lobby connection validation
+      socket.on('lobby:validate', async ({ code, username }) => {
         try {
-          // Validate username
-          if (
-            !username ||
-            username.length < LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH ||
-            username.length > LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH
-          ) {
-            return this.emitError(
-              socket,
-              'USERNAME_INVALID',
-              'Username must be between 1 and 25 characters'
-            );
-          }
-
-          const lobby = await this.createLobby(socket.id, username);
-
-          // Join socket to a room for this lobby
-          await socket.join(`lobby:${lobby.code}`);
-
-          // Emit success event
-          socket.emit('lobby:created', lobby);
-        } catch (error) {
-          console.error('Error creating lobby:', error);
-          this.emitError(
-            socket,
-            'SERVER_ERROR',
-            'Failed to create lobby. Please try again.'
-          );
-        }
-      });
-
-      // Handle lobby joining
-      socket.on('lobby:join', async (code: string, username: string) => {
-        try {
-          // Validate inputs
-          if (
-            !username ||
-            username.length < LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH ||
-            username.length > LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH
-          ) {
-            return this.emitError(
-              socket,
-              'USERNAME_INVALID',
-              'Username must be between 1 and 25 characters'
-            );
-          }
-
-          // Get lobby
           const lobby = await this.getLobby(code);
           if (!lobby) {
-            return this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
           }
 
-          // Check if lobby is joinable
-          if (lobby.status !== 'waiting') {
-            return this.emitError(
-              socket,
-              'LOBBY_NOT_FOUND',
-              'This lobby is no longer accepting players'
-            );
-          }
+          // ... rest of validation logic ...
 
-          // Check player limit
-          if (lobby.players.length >= LOBBY_CONSTRAINTS.MAX_PLAYERS) {
-            return this.emitError(socket, 'LOBBY_FULL', 'Lobby is full');
-          }
+          // After successful validation, emit the validated event
+          socket.emit('lobby:validated', lobby);
 
-          // Check username uniqueness
-          if (lobby.players.some((p) => p.username === username)) {
-            return this.emitError(
-              socket,
-              'USERNAME_TAKEN',
-              'Username is already taken in this lobby'
-            );
-          }
-
-          // Add player to lobby
-          const player: LobbyPlayer = {
-            id: socket.id,
-            username,
-            isHost: false,
-            connected: true,
-          };
-
-          lobby.players.push(player);
-          await this.updateLobby(lobby);
-
-          // Join socket to lobby room
-          await socket.join(`lobby:${lobby.code}`);
-
-          // Notify everyone in the lobby
-          socket.emit('lobby:joined', lobby);
-          this.io.to(`lobby:${lobby.code}`).emit('lobby:updated', lobby);
+          // Then broadcast the update to everyone
+          this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
         } catch (error) {
-          console.error('Error joining lobby:', error);
+          console.error('Error validating lobby connection:', error);
           this.emitError(
             socket,
             'SERVER_ERROR',
-            'Failed to join lobby. Please try again.'
+            'Failed to validate lobby connection'
           );
         }
       });
 
-      socket.on('disconnect', () => {
-        console.log(`Client disconnected: ${socket.id}`);
-        // We'll handle player disconnection logic later
-      });
-    });
+      // Handle disconnection
+      socket.on('disconnect', async () => {
+        try {
+          // Find which lobby this socket was in
+          const rooms = Array.from(socket.rooms);
+          const lobbyRoom = rooms.find((room) => room.startsWith('lobby:'));
+          if (!lobbyRoom) return;
 
-    this.io.on('connect_error', (err) => {
-      console.error('Socket.io server error:', err.message);
+          const code = lobbyRoom.split(':')[1];
+          const lobby = await this.getLobby(code);
+          if (!lobby) return;
+
+          // Update player status
+          const player = lobby.players.find((p) => p.id === socket.id);
+          if (player) {
+            player.connected = false;
+            player.lastSeen = new Date();
+
+            // Update lobby in Redis
+            await this.updateLobby(lobby);
+
+            // Notify remaining players
+            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+          }
+        } catch (error) {
+          console.error('Error handling disconnection:', error);
+        }
+      });
     });
   }
 

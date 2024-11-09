@@ -5,8 +5,24 @@ import express from 'express';
 import http from 'http';
 import { SocketService } from './services/socketService';
 import { connectRedis } from './config/redis';
+import cors from 'cors';
+import type { CorsOptions } from 'cors';
+import lobbyRoutes from './routes/lobby';
 
 const app = express();
+
+const corsOptions: CorsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+app.use('/api/lobbies', lobbyRoutes);
+
 const server = http.createServer(app);
 
 // Initialize all services

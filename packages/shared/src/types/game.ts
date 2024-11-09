@@ -55,6 +55,8 @@ export interface ServerToClientEvents {
   "lobby:closed": (reason: string) => void;
   "lobby:error": (error: LobbyError) => void;
 
+  "lobby:validated": (lobby: Lobby) => void;
+
   // Game Events
   "game:started": (initialState: GameState) => void;
   "game:round_started": (round: GameRound) => void;
@@ -66,19 +68,28 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  // Lobby Events
+  // Existing events...
   "lobby:create": (username: string) => void;
   "lobby:join": (code: string, username: string) => void;
   "lobby:leave": () => void;
   "lobby:update_settings": (settings: Partial<LobbySettings>) => void;
 
-  // Host-only Events
+  "lobby:validate": (data: { code: string; username: string }) => void;
+
+  // Host-only events...
   "lobby:start_game": () => void;
   "lobby:kick_player": (playerId: string) => void;
 
-  // Game Events
+  // Game events...
   "game:submit_prompt": (prompt: string) => void;
   "game:submit_guess": (guess: string) => void;
+}
+
+export interface LobbySession {
+  code: string;
+  username: string;
+  isHost: boolean;
+  joinedAt: string;
 }
 
 // Status Types

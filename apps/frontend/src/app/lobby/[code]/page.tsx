@@ -3,69 +3,93 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
-import type { Lobby } from "@promptmaster/shared";
-import type { LobbySessionData } from "@/types/lobby";
-
-// We'll create these components next
+import type { Lobby, LobbySession } from "@promptmaster/shared";
 import { PlayerList } from "./components/PlayerList";
 import { ShareCode } from "./components/ShareCode";
 import { HostControls } from "./components/HostControls";
 import { LobbySettings } from "./components/LobbySettings";
 
-export default function LobbyPage({ params }: { params: { code: string } }) {
+interface LobbyPageProps {
+  params: {
+    code: string;
+  };
+}
+
+export default function LobbyPage({ params }: LobbyPageProps) {
   const router = useRouter();
-  const { socket, connect, emit } = useSocket();
+  const {
+    connect,
+    disconnect,
+    validateLobby,
+    error,
+    // isConnected,
+    socket, // Add this
+    emit, // Add this
+    on, // Add this
+  } = useSocket();
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  // Check for session data on mount
   useEffect(() => {
-    const sessionData = sessionStorage.getItem(`lobby:${params.code}`);
-    if (!sessionData) {
-      router.replace("/"); // Redirect to home if no session
-      return;
-    }
+    let mounted = true;
 
-    const session: LobbySessionData = JSON.parse(sessionData);
-
-    const initializeSocket = async () => {
+    const initializeLobby = async () => {
       try {
+        // Get session data
+        const sessionData = sessionStorage.getItem(`lobby:${params.code}`);
+        if (!sessionData) {
+          throw new Error("No session data found");
+        }
+
+        const session: LobbySession = JSON.parse(sessionData);
+
+        // Establish socket connection
         await connect();
-        // Rejoin lobby with stored session data
-        emit("lobby:join", params.code, session.username);
-      } catch (err) {
-        setError("Failed to connect to server");
+
+        if (!mounted) return;
+
+        // Validate lobby membership
+        const lobbyData = await validateLobby(params.code, session.username);
+
+        if (!mounted) return;
+
+        setLobby(lobbyData);
         setIsLoading(false);
+        setConnectionError(null);
+
+        // Set up lobby update listener
+        on("lobby:updated", (updatedLobby) => {
+          if (mounted) {
+            setLobby(updatedLobby);
+          }
+        });
+      } catch (err) {
+        if (!mounted) return;
+
+        console.error("Lobby initialization error:", err);
+        setConnectionError(
+          err instanceof Error ? err.message : "Failed to join lobby"
+        );
+        setIsLoading(false);
+
+        // If no session or invalid, redirect to home
+        if (err.message === "No session data found") {
+          router.replace("/");
+        }
       }
     };
 
-    initializeSocket();
-  }, [params.code, router, connect, emit]);
+    initializeLobby();
 
-  // Handle socket events
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleLobbyUpdate = (updatedLobby: Lobby) => {
-      setLobby(updatedLobby);
-      setIsLoading(false);
-    };
-
-    const handleError = (error: { message: string }) => {
-      setError(error.message);
-      setIsLoading(false);
-    };
-
-    socket.on("lobby:updated", handleLobbyUpdate);
-    socket.on("lobby:error", handleError);
-
+    // Cleanup
     return () => {
-      socket.off("lobby:updated", handleLobbyUpdate);
-      socket.off("lobby:error", handleError);
+      mounted = false;
+      disconnect();
     };
-  }, [socket]);
+  }, [params.code, connect, disconnect, validateLobby, router]);
 
+  // Show loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#FAFBFF] flex items-center justify-center">
@@ -77,12 +101,15 @@ export default function LobbyPage({ params }: { params: { code: string } }) {
     );
   }
 
-  if (error) {
+  // Show error state
+  if (connectionError || error) {
     return (
       <div className="min-h-screen bg-[#FAFBFF] flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="text-red-500 mb-4">⚠️</div>
-          <p className="text-slate-600 mb-4">{error}</p>
+          <p className="text-slate-600 mb-4">
+            {connectionError || error?.message}
+          </p>
           <button
             onClick={() => router.push("/")}
             className="px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-all"
