@@ -15,7 +15,11 @@ type SocketWithData = Socket<ClientToServerEvents, ServerToClientEvents>;
 export class SocketService {
   private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 
+  private socketToLobby: Map<string, string> = new Map();
+
   constructor(server: HTTPServer) {
+    console.log('Initializing SocketService...');
+
     this.io = new SocketIOServer(server, {
       cors: {
         origin: process.env.FRONTEND_URL,
@@ -24,6 +28,10 @@ export class SocketService {
       },
       transports: ['websocket'],
     });
+
+    // Temporary: Log the exact type
+    const IoType = typeof this.io;
+    console.log('IO Type:', IoType);
 
     this.setupEventHandlers();
   }
@@ -92,6 +100,8 @@ export class SocketService {
           // Join the socket to the lobby room
           await socket.join(`lobby:${code}`);
 
+          this.socketToLobby.set(socket.id, code);
+
           // Update lobby in Redis
           await this.updateLobby(lobby);
 
@@ -110,37 +120,108 @@ export class SocketService {
         }
       });
 
-      // Handle disconnection
       socket.on('disconnect', async () => {
         try {
-          // Find which lobby this socket was in
-          const rooms = Array.from(socket.rooms);
-          const lobbyRoom = rooms.find((room) => room.startsWith('lobby:'));
-          if (!lobbyRoom) return;
+          console.log(`Client disconnected: ${socket.id}`);
 
-          const code = lobbyRoom.split(':')[1];
-          const lobby = await this.getLobby(code);
-          if (!lobby) return;
+          // Get lobby code from our map
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            console.log('No lobby found for disconnected socket');
+            return;
+          }
+          console.log('Found lobby code:', code);
+
+          // Get lobby data
+          const lobbyData = await this.getLobby(code);
+          if (!lobbyData) {
+            console.log('No lobby data found for code:', code);
+            return;
+          }
+          console.log(
+            'Current lobby data:',
+            JSON.stringify(lobbyData, null, 2)
+          );
+
+          // Find and update the player
+          const player = lobbyData.players.find((p) => p.id === socket.id);
+          if (!player) {
+            console.log('No player found with socket id:', socket.id);
+            return;
+          }
+          console.log('Found disconnecting player:', player);
 
           // Update player status
-          const player = lobby.players.find((p) => p.id === socket.id);
-          if (player) {
-            player.connected = false;
-            player.lastSeen = new Date();
+          player.connected = false;
+          player.lastSeen = new Date();
+          console.log('Updated player status to disconnected');
 
-            // Update lobby in Redis
-            await this.updateLobby(lobby);
+          // Check if all players are disconnected
+          const allDisconnected = lobbyData.players.every((p) => !p.connected);
+          console.log('All players disconnected?', allDisconnected);
+          console.log(
+            'Players status:',
+            lobbyData.players.map((p) => ({
+              username: p.username,
+              connected: p.connected,
+            }))
+          );
+
+          if (allDisconnected) {
+            console.log('Attempting to delete lobby...');
+
+            // Try to delete the lobby and log the result
+            const deleteResult = await redisClient.del(`lobby:${code}`);
+            console.log('Delete lobby result:', deleteResult); // 1 means success, 0 means key didn't exist
+
+            // Try to delete username reservations and log results
+            for (const p of lobbyData.players) {
+              const usernameDeleteResult = await redisClient.del(
+                `lobby:${code}:username:${p.username}`
+              );
+              console.log(
+                `Delete username reservation result for ${p.username}:`,
+                usernameDeleteResult
+              );
+            }
+
+            console.log(
+              `Attempted to delete lobby ${code} and its username reservations`
+            );
+          } else {
+            console.log('Saving updated lobby data...');
+            await this.updateLobby(lobbyData);
+            console.log('Updated lobby saved to Redis');
 
             // Notify remaining players
-            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+            this.io.to(`lobby:${code}`).emit('lobby:updated', lobbyData);
+            console.log('Notified remaining players of update');
           }
-        } catch (error) {
-          console.error('Error handling disconnection:', error);
+
+          // Clean up our tracking
+          this.socketToLobby.delete(socket.id);
+          console.log('Cleaned up socket tracking');
+        } catch (error: unknown) {
+          // TypeScript needs explicit unknown type
+          console.error('Error in disconnect handler:', error);
+          // If it's an Error object, we can access message and stack
+          if (error instanceof Error) {
+            console.error('Full error details:', {
+              message: error.message,
+              stack: error.stack,
+            });
+          } else {
+            // If it's not an Error object, just log what we have
+            console.error('Full error details:', error);
+          }
         }
       });
     });
   }
 
+  // public getIO(): SocketIOServer<ClientToServerEvents, ServerToClientEvents> {
+  //   return this.io;
+  // }
   public getIO(): SocketIOServer<ClientToServerEvents, ServerToClientEvents> {
     return this.io;
   }
