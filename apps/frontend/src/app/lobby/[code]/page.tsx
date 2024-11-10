@@ -211,30 +211,4 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       </div>
     </main>
   );
-  // const connectedPlayersCount =
-  //   lobby?.players.filter((p) => p.connected).length ?? 0;
-
-  // return (
-  //   <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
-  //     {/* ... decorative elements and other content ... */}
-
-  //     <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
-  //       <div className="grid gap-8 md:grid-cols-[1fr,300px]">
-  //         <div className="space-y-8">
-  //           <ShareCode code={lobby.code} />
-  //           <PlayerList players={lobby.players} hostId={lobby.hostId} />
-
-  //           {lobby.hostId === socket?.id && (
-  //             <HostControls
-  //               canStart={connectedPlayersCount >= 2}
-  //               onStart={() => emit("lobby:start_game")}
-  //             />
-  //           )}
-  //         </div>
-
-  //         {/* ... rest of the component ... */}
-  //       </div>
-  //     </div>
-  //   </main>
-  // );
 }

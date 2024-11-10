@@ -308,28 +308,6 @@ export class SocketService {
             kickedSocket.leave(`lobby:${code}`);
             this.socketToLobby.delete(playerId);
           }
-
-          // // Remove player from lobby
-          // lobby.players = lobby.players.filter((p) => p.id !== playerId);
-
-          // // Save updated lobby
-          // await this.updateLobby(lobby);
-
-          // // Notify the kicked player
-          // this.io
-          //   .to(playerId)
-          //   .emit('lobby:closed', 'You have been kicked from the lobby');
-
-          // // Broadcast update to remaining players
-          // this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
-
-          // // Remove the kicked socket from the lobby room
-          // const kickedSocket = this.io.sockets.sockets.get(playerId);
-          // if (kickedSocket) {
-          //   kickedSocket.leave(`lobby:${code}`);
-          //   // Clean up our tracking
-          //   this.socketToLobby.delete(playerId);
-          // }
         } catch (error) {
           console.error('Error kicking player:', error);
           this.emitError(socket, 'SERVER_ERROR', 'Failed to kick player');
@@ -435,9 +413,6 @@ export class SocketService {
     });
   }
 
-  // public getIO(): SocketIOServer<ClientToServerEvents, ServerToClientEvents> {
-  //   return this.io;
-  // }
   public getIO(): SocketIOServer<ClientToServerEvents, ServerToClientEvents> {
     return this.io;
   }
