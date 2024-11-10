@@ -121,8 +121,15 @@ export default function LobbyPage({ params }: LobbyPageProps) {
 
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
+      {/* Keep your existing decorative circles */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-[#4F46E5] opacity-5 rounded-full -translate-y-1/2 translate-x-1/2" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#F97066] opacity-5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+      <div className="text-center pt-8">
+        <h1 className="text-5xl font-bold text-slate-800">
+          Prompt<span className="text-[#4F46E5]">master</span>
+        </h1>
+      </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="grid gap-8 md:grid-cols-[1fr,300px]">
