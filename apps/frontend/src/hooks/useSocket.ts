@@ -55,37 +55,40 @@ export const useSocket = ({
       }
 
       try {
+        // Create socket instance first
         socketRef.current = io(url, {
-          autoConnect: false,
-          transports: ["websocket"],
+          transports: ["websocket"], // Removed autoConnect: false
           reconnection: true,
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
         });
 
+        // Set up event handlers before attempting connection
         socketRef.current.on("connect", () => {
+          console.log("Socket connected successfully"); // Added logging
           setIsConnected(true);
           setError(null);
           resolve();
         });
 
         socketRef.current.on("connect_error", (err) => {
+          console.error("Socket connection error:", err); // Added logging
           setError(err);
           setIsConnected(false);
           reject(err);
         });
 
         socketRef.current.on("disconnect", (reason) => {
+          console.log("Socket disconnected:", reason); // Added logging
           setIsConnected(false);
           if (reason === "io server disconnect") {
             socketRef.current?.connect();
           }
         });
-
-        socketRef.current.connect();
       } catch (err) {
         const error =
           err instanceof Error ? err : new Error("Failed to connect to socket");
+        console.error("Socket initialization error:", error); // Added logging
         setError(error);
         reject(error);
       }

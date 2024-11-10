@@ -73,7 +73,27 @@ export class SocketService {
             return;
           }
 
-          // ... rest of validation logic ...
+          // Find player in lobby
+          const player = lobby.players.find((p) => p.username === username);
+          if (!player) {
+            this.emitError(
+              socket,
+              'PLAYER_NOT_FOUND',
+              'Player not found in lobby'
+            );
+            return;
+          }
+
+          // Update player's socket ID and connection status
+          player.id = socket.id;
+          player.connected = true;
+          player.lastSeen = new Date();
+
+          // Join the socket to the lobby room
+          await socket.join(`lobby:${code}`);
+
+          // Update lobby in Redis
+          await this.updateLobby(lobby);
 
           // After successful validation, emit the validated event
           socket.emit('lobby:validated', lobby);
