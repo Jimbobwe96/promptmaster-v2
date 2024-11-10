@@ -21,4 +21,5 @@ RUN cd apps/backend && npm run build
 
 EXPOSE 4000
 
-CMD ["npm", "run", "--prefix", "apps/backend", "start"]
+# Changed to use init.js
+CMD ["node", "apps/backend/dist/init.js"]

@@ -1,31 +1,104 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-// import Link from "next/link";
+// import type { LobbyError, Lobby } from "@promptmaster/shared";
 
 export default function Home() {
+  const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [joinName, setJoinName] = useState("");
   const [lobbyCode, setLobbyCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createName.trim()) return;
 
-    // TODO: Handle lobby creation
-    console.log("Creating lobby with name:", createName);
-    setIsCreateModalOpen(false);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log("Attempting to create lobby...");
+      const response = await fetch("http://localhost:4000/api/lobbies/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: createName.trim() }),
+      });
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Error response:", errorText);
+        throw new Error(error.message || "Failed to create lobby");
+      }
+
+      const lobby = await response.json();
+
+      // Store session data
+      const session = {
+        code: lobby.code,
+        username: createName.trim(),
+        isHost: true,
+        joinedAt: new Date().toISOString(),
+      };
+      sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
+
+      // Close modal before redirect
+      setIsCreateModalOpen(false);
+      router.push(`/lobby/${lobby.code}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create lobby");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinName.trim() || !lobbyCode.trim()) return;
 
-    // TODO: Handle lobby joining
-    console.log("Joining lobby:", { name: joinName, code: lobbyCode });
-    setIsJoinModalOpen(false);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/lobbies/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: joinName.trim(),
+          code: lobbyCode.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to join lobby");
+      }
+
+      const lobby = await response.json();
+
+      // Store session data
+      const session = {
+        code: lobby.code,
+        username: joinName.trim(),
+        isHost: false,
+        joinedAt: new Date().toISOString(),
+      };
+      sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
+
+      // Close modal before redirect
+      setIsJoinModalOpen(false);
+      router.push(`/lobby/${lobby.code}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to join lobby");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,7 +124,10 @@ export default function Home() {
         {/* Buttons */}
         <div className="flex flex-col sm:flex-row gap-6">
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              setError(null);
+              setIsCreateModalOpen(true);
+            }}
             className="px-8 py-4 bg-[#4F46E5] text-white rounded-xl text-lg font-medium 
                      shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 
                      hover:translate-y-[-2px] transition-all duration-200"
@@ -59,7 +135,10 @@ export default function Home() {
             Create Lobby
           </button>
           <button
-            onClick={() => setIsJoinModalOpen(true)}
+            onClick={() => {
+              setError(null);
+              setIsJoinModalOpen(true);
+            }}
             className="px-8 py-4 bg-[#F97066] text-white rounded-xl text-lg font-medium 
                      shadow-lg shadow-[#F97066]/25 hover:shadow-[#F97066]/40 
                      hover:translate-y-[-2px] transition-all duration-200"
@@ -85,6 +164,7 @@ export default function Home() {
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600"
+                disabled={isLoading}
               >
                 ✕
               </button>
@@ -104,16 +184,52 @@ export default function Home() {
                   onChange={(e) => setCreateName(e.target.value)}
                   placeholder="Enter your name"
                   className="w-full px-4 py-2 rounded-lg border border-slate-200 text-[#1E293B]
-                           focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                           focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent
+                           disabled:bg-slate-50 disabled:text-slate-400"
                   required
+                  disabled={isLoading}
                 />
               </div>
+              {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
               <button
                 type="submit"
+                disabled={isLoading}
                 className="w-full px-4 py-2 bg-[#4F46E5] text-white rounded-lg
-                         hover:bg-[#4F46E5]/90 transition-colors duration-200"
+                         hover:bg-[#4F46E5]/90 transition-colors duration-200
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         flex items-center justify-center"
               >
-                Create Lobby
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Connecting...
+                  </>
+                ) : (
+                  "Create Lobby"
+                )}
               </button>
             </form>
           </div>
@@ -131,6 +247,7 @@ export default function Home() {
               <button
                 onClick={() => setIsJoinModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600"
+                disabled={isLoading}
               >
                 ✕
               </button>
@@ -150,9 +267,11 @@ export default function Home() {
                   onChange={(e) => setLobbyCode(e.target.value)}
                   placeholder="Enter 6-digit code"
                   className="w-full px-4 py-2 rounded-lg border border-slate-200 text-[#1E293B]
-                           focus:outline-none focus:ring-2 focus:ring-[#F97066] focus:border-transparent"
+                           focus:outline-none focus:ring-2 focus:ring-[#F97066] focus:border-transparent
+                           disabled:bg-slate-50 disabled:text-slate-400"
                   required
                   maxLength={6}
+                  disabled={isLoading}
                 />
               </div>
               <div className="mb-4">
@@ -169,16 +288,52 @@ export default function Home() {
                   onChange={(e) => setJoinName(e.target.value)}
                   placeholder="Enter your name"
                   className="w-full px-4 py-2 rounded-lg border border-slate-200 text-[#1E293B]
-                           focus:outline-none focus:ring-2 focus:ring-[#F97066] focus:border-transparent"
+                           focus:outline-none focus:ring-2 focus:ring-[#F97066] focus:border-transparent
+                           disabled:bg-slate-50 disabled:text-slate-400"
                   required
+                  disabled={isLoading}
                 />
               </div>
+              {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
               <button
                 type="submit"
+                disabled={isLoading}
                 className="w-full px-4 py-2 bg-[#F97066] text-white rounded-lg
-                         hover:bg-[#F97066]/90 transition-colors duration-200"
+                         hover:bg-[#F97066]/90 transition-colors duration-200
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         flex items-center justify-center"
               >
-                Join Lobby
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Connecting...
+                  </>
+                ) : (
+                  "Join Lobby"
+                )}
               </button>
             </form>
           </div>
