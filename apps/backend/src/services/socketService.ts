@@ -6,6 +6,7 @@ import type {
   Lobby,
   LobbyError,
   LobbyErrorType,
+  LobbySettings,
 } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
@@ -14,8 +15,9 @@ type SocketWithData = Socket<ClientToServerEvents, ServerToClientEvents>;
 
 export class SocketService {
   private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
-
   private socketToLobby: Map<string, string> = new Map();
+  private cleanupInterval: NodeJS.Timeout | null = null; // Changed from Timer to Timeout
+  private readonly DISCONNECT_TIMEOUT = 15000; // 15 seconds in milliseconds
 
   constructor(server: HTTPServer) {
     console.log('Initializing SocketService...');
@@ -29,11 +31,75 @@ export class SocketService {
       transports: ['websocket'],
     });
 
-    // Temporary: Log the exact type
-    const IoType = typeof this.io;
-    console.log('IO Type:', IoType);
-
     this.setupEventHandlers();
+    this.startCleanupInterval();
+  }
+
+  private startCleanupInterval(): void {
+    // Run cleanup every 5 seconds
+    this.cleanupInterval = setInterval(
+      () => this.cleanupDisconnectedPlayers(),
+      5000
+    );
+  }
+
+  private async cleanupDisconnectedPlayers(): Promise<void> {
+    try {
+      // Get all active lobby keys
+      const lobbyKeys = await redisClient.keys('lobby:*');
+      const now = new Date();
+
+      for (const key of lobbyKeys) {
+        // Skip username reservation keys
+        if (key.includes(':username:')) continue;
+
+        const lobbyData = await redisClient.get(key);
+        if (!lobbyData) continue;
+
+        const lobby: Lobby = JSON.parse(lobbyData);
+        let lobbyUpdated = false;
+
+        // Filter out players who have been disconnected for too long
+        const updatedPlayers = lobby.players.filter((player) => {
+          if (!player.connected && player.lastSeen) {
+            const disconnectedTime =
+              now.getTime() - new Date(player.lastSeen).getTime();
+            return disconnectedTime <= this.DISCONNECT_TIMEOUT;
+          }
+          return true;
+        });
+
+        // If any players were removed, update the lobby
+        if (updatedPlayers.length !== lobby.players.length) {
+          lobby.players = updatedPlayers;
+          lobbyUpdated = true;
+
+          // If all players are gone, delete the lobby
+          if (updatedPlayers.length === 0) {
+            await redisClient.del(key);
+            continue;
+          }
+
+          // If host was removed, assign new host
+          if (!updatedPlayers.some((p) => p.id === lobby.hostId)) {
+            const newHost = updatedPlayers.find((p) => p.connected);
+            if (newHost) {
+              newHost.isHost = true;
+              lobby.hostId = newHost.id;
+            }
+          }
+        }
+
+        // Save updated lobby if changes were made
+        if (lobbyUpdated) {
+          await this.updateLobby(lobby);
+          // Notify remaining players
+          this.io.to(`lobby:${lobby.code}`).emit('lobby:updated', lobby);
+        }
+      }
+    } catch (error) {
+      console.error('Error in cleanup interval:', error);
+    }
   }
 
   private emitError(
@@ -97,18 +163,25 @@ export class SocketService {
           player.connected = true;
           player.lastSeen = new Date();
 
+          // If this player is the host (isHost: true), update the lobby's hostId
+          if (player.isHost) {
+            lobby.hostId = socket.id;
+            console.log(
+              `Updated hostId to ${socket.id} for host player ${username}`
+            );
+          }
+
           // Join the socket to the lobby room
           await socket.join(`lobby:${code}`);
-
           this.socketToLobby.set(socket.id, code);
 
           // Update lobby in Redis
           await this.updateLobby(lobby);
 
-          // After successful validation, emit the validated event
+          // Emit validated event
           socket.emit('lobby:validated', lobby);
 
-          // Then broadcast the update to everyone
+          // Broadcast update to everyone
           this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
         } catch (error) {
           console.error('Error validating lobby connection:', error);
@@ -119,6 +192,71 @@ export class SocketService {
           );
         }
       });
+
+      socket.on(
+        'lobby:update_settings',
+        async (settings: Partial<LobbySettings>) => {
+          try {
+            // Get lobby code from our map
+            const code = this.socketToLobby.get(socket.id);
+            if (!code) {
+              this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+              return;
+            }
+
+            // Get lobby data
+            const lobby = await this.getLobby(code);
+            if (!lobby) {
+              this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+              return;
+            }
+
+            // Verify user is host
+            if (lobby.hostId !== socket.id) {
+              this.emitError(
+                socket,
+                'NOT_HOST',
+                'Only the host can update settings'
+              );
+              return;
+            }
+
+            // Validate new settings
+            const newSettings = {
+              ...lobby.settings,
+              ...settings,
+            };
+
+            if (
+              newSettings.roundsPerPlayer <
+                LOBBY_CONSTRAINTS.MIN_ROUNDS_PER_PLAYER ||
+              newSettings.roundsPerPlayer >
+                LOBBY_CONSTRAINTS.MAX_ROUNDS_PER_PLAYER ||
+              newSettings.timeLimit < LOBBY_CONSTRAINTS.MIN_TIME_LIMIT ||
+              newSettings.timeLimit > LOBBY_CONSTRAINTS.MAX_TIME_LIMIT
+            ) {
+              this.emitError(
+                socket,
+                'INVALID_SETTINGS',
+                'Invalid settings values'
+              );
+              return;
+            }
+
+            // Update lobby settings
+            lobby.settings = newSettings;
+
+            // Save updated lobby
+            await this.updateLobby(lobby);
+
+            // Broadcast update to all clients in the lobby
+            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+          } catch (error) {
+            console.error('Error updating lobby settings:', error);
+            this.emitError(socket, 'SERVER_ERROR', 'Failed to update settings');
+          }
+        }
+      );
 
       socket.on('disconnect', async () => {
         try {
@@ -224,5 +362,12 @@ export class SocketService {
   // }
   public getIO(): SocketIOServer<ClientToServerEvents, ServerToClientEvents> {
     return this.io;
+  }
+
+  public stop(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
   }
 }

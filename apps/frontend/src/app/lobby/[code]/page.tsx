@@ -23,9 +23,9 @@ export default function LobbyPage({ params }: LobbyPageProps) {
     validateLobby,
     error,
     // isConnected,
-    socket, // Add this
-    emit, // Add this
-    on, // Add this
+    socket,
+    emit,
+    on,
   } = useSocket();
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +60,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
 
         // Set up lobby update listener
         on("lobby:updated", (updatedLobby) => {
+          console.log("Received lobby update:", updatedLobby);
           if (mounted) {
             setLobby(updatedLobby);
           }
@@ -123,6 +124,49 @@ export default function LobbyPage({ params }: LobbyPageProps) {
 
   if (!lobby) return null;
 
+  // Get count of connected players
+  const connectedPlayersCount =
+    lobby?.players.filter((p) => p.connected).length ?? 0;
+
+  // Early returns for loading, error states remain the same...
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAFBFF] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-[#4F46E5] border-t-transparent rounded-full mb-4" />
+          <p className="text-slate-600">Connecting to lobby...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (connectionError || error) {
+    return (
+      <div className="min-h-screen bg-[#FAFBFF] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="text-red-500 mb-4">⚠️</div>
+          <p className="text-slate-600 mb-4">
+            {connectionError || error?.message}
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-all"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!lobby) return null;
+
+  const handleSettingsUpdate = (
+    newSettings: Partial<typeof lobby.settings>
+  ) => {
+    emit("lobby:update_settings", newSettings);
+  };
+
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       {/* Decorative elements */}
@@ -136,9 +180,10 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           <div className="space-y-8">
             <ShareCode code={lobby.code} />
             <PlayerList players={lobby.players} hostId={lobby.hostId} />
+
             {lobby.hostId === socket?.id && (
               <HostControls
-                canStart={lobby.players.length >= 2}
+                canStart={connectedPlayersCount >= 2}
                 onStart={() => emit("lobby:start_game")}
               />
             )}
@@ -149,11 +194,37 @@ export default function LobbyPage({ params }: LobbyPageProps) {
             <LobbySettings
               settings={lobby.settings}
               isHost={lobby.hostId === socket?.id}
-              onUpdate={(settings) => emit("lobby:update_settings", settings)}
+              onUpdate={handleSettingsUpdate}
             />
           </div>
         </div>
       </div>
     </main>
   );
+  // const connectedPlayersCount =
+  //   lobby?.players.filter((p) => p.connected).length ?? 0;
+
+  // return (
+  //   <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
+  //     {/* ... decorative elements and other content ... */}
+
+  //     <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+  //       <div className="grid gap-8 md:grid-cols-[1fr,300px]">
+  //         <div className="space-y-8">
+  //           <ShareCode code={lobby.code} />
+  //           <PlayerList players={lobby.players} hostId={lobby.hostId} />
+
+  //           {lobby.hostId === socket?.id && (
+  //             <HostControls
+  //               canStart={connectedPlayersCount >= 2}
+  //               onStart={() => emit("lobby:start_game")}
+  //             />
+  //           )}
+  //         </div>
+
+  //         {/* ... rest of the component ... */}
+  //       </div>
+  //     </div>
+  //   </main>
+  // );
 }
