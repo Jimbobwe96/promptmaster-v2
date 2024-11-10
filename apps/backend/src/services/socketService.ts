@@ -258,6 +258,84 @@ export class SocketService {
         }
       );
 
+      socket.on('lobby:kick_player', async (playerId: string) => {
+        try {
+          // Get lobby code from our map
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Get lobby data
+          const lobby = await this.getLobby(code);
+          if (!lobby) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Verify user is host
+          if (lobby.hostId !== socket.id) {
+            this.emitError(
+              socket,
+              'NOT_HOST',
+              'Only the host can kick players'
+            );
+            return;
+          }
+
+          // Find player to kick
+          const playerToKick = lobby.players.find((p) => p.id === playerId);
+          if (!playerToKick) {
+            this.emitError(socket, 'PLAYER_NOT_FOUND', 'Player not found');
+            return;
+          }
+
+          this.io.to(playerId).emit('lobby:kicked');
+
+          // Remove player from lobby
+          lobby.players = lobby.players.filter((p) => p.id !== playerId);
+
+          // Save updated lobby
+          await this.updateLobby(lobby);
+
+          // Broadcast update to remaining players
+          this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+
+          // Remove the kicked socket from the lobby room
+          const kickedSocket = this.io.sockets.sockets.get(playerId);
+          if (kickedSocket) {
+            kickedSocket.leave(`lobby:${code}`);
+            this.socketToLobby.delete(playerId);
+          }
+
+          // // Remove player from lobby
+          // lobby.players = lobby.players.filter((p) => p.id !== playerId);
+
+          // // Save updated lobby
+          // await this.updateLobby(lobby);
+
+          // // Notify the kicked player
+          // this.io
+          //   .to(playerId)
+          //   .emit('lobby:closed', 'You have been kicked from the lobby');
+
+          // // Broadcast update to remaining players
+          // this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+
+          // // Remove the kicked socket from the lobby room
+          // const kickedSocket = this.io.sockets.sockets.get(playerId);
+          // if (kickedSocket) {
+          //   kickedSocket.leave(`lobby:${code}`);
+          //   // Clean up our tracking
+          //   this.socketToLobby.delete(playerId);
+          // }
+        } catch (error) {
+          console.error('Error kicking player:', error);
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to kick player');
+        }
+      });
+
       socket.on('disconnect', async () => {
         try {
           console.log(`Client disconnected: ${socket.id}`);

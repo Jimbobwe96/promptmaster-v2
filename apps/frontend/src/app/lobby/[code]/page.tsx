@@ -167,6 +167,10 @@ export default function LobbyPage({ params }: LobbyPageProps) {
     emit("lobby:update_settings", newSettings);
   };
 
+  const handleKickPlayer = (playerId: string) => {
+    emit("lobby:kick_player", playerId);
+  };
+
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       {/* Decorative elements */}
@@ -179,7 +183,13 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           {/* Main content */}
           <div className="space-y-8">
             <ShareCode code={lobby.code} />
-            <PlayerList players={lobby.players} hostId={lobby.hostId} />
+            <PlayerList
+              players={lobby.players}
+              hostId={lobby.hostId}
+              currentUserId={socket?.id ?? ""}
+              isHost={lobby.hostId === socket?.id}
+              onKickPlayer={handleKickPlayer}
+            />
 
             {lobby.hostId === socket?.id && (
               <HostControls

@@ -1,62 +1,109 @@
-"use client";
-
+import React, { useState } from "react";
 import type { LobbyPlayer } from "@promptmaster/shared";
 
 interface PlayerListProps {
   players: LobbyPlayer[];
   hostId: string;
+  currentUserId: string; // Add this prop
+  isHost?: boolean;
+  onKickPlayer?: (playerId: string) => void;
 }
 
-export function PlayerList({ players, hostId }: PlayerListProps) {
+export const PlayerList = ({
+  players,
+  hostId,
+  currentUserId,
+  isHost,
+  onKickPlayer,
+}: PlayerListProps) => {
+  const [kickingPlayerId, setKickingPlayerId] = useState<string | null>(null);
+
+  const handleKickClick = (playerId: string) => {
+    setKickingPlayerId(playerId);
+    setTimeout(() => setKickingPlayerId(null), 3000);
+  };
+
+  const handleConfirmKick = (playerId: string) => {
+    onKickPlayer?.(playerId);
+    setKickingPlayerId(null);
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-medium text-slate-600">Players</h2>
-        <span className="text-sm text-slate-400">
-          {players.length}/8 players
-        </span>
-      </div>
+    <div className="bg-white rounded-xl shadow-sm">
+      <div className="p-6">
+        <h2 className="text-lg font-semibold text-slate-800 mb-4">Players</h2>
+        <div className="space-y-3">
+          {players.map((player) => {
+            const isCurrentUser = player.id === currentUserId;
 
-      <div className="space-y-2">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className="flex items-center justify-between p-3 rounded-lg bg-slate-50"
-          >
-            <div className="flex items-center gap-3">
-              {/* Player icon/status */}
+            return (
               <div
-                className={`w-2 h-2 rounded-full ${
-                  player.connected ? "bg-green-400" : "bg-red-400"
-                }`}
-              />
+                key={player.username}
+                className={`flex items-center justify-between p-3 rounded-lg transition-colors
+                  ${
+                    isCurrentUser
+                      ? "bg-indigo-50 border-l-4 border-indigo-500"
+                      : player.connected
+                      ? "bg-slate-50"
+                      : "bg-slate-100"
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      player.connected ? "bg-green-400" : "bg-slate-400"
+                    }`}
+                  />
+                  <div className="font-medium text-slate-700">
+                    <span>{player.username}</span>
+                    {player.id === hostId && (
+                      <span className="ml-2 text-xs text-indigo-600 font-semibold">
+                        (Host)
+                      </span>
+                    )}
+                    {isCurrentUser && (
+                      <span className="ml-2 text-xs text-slate-500">(You)</span>
+                    )}
+                  </div>
+                </div>
 
-              {/* Player name */}
-              <span className="font-medium text-slate-700">
-                {player.username}
-              </span>
-
-              {/* Host badge */}
-              {player.id === hostId && (
-                <span className="px-2 py-0.5 text-xs font-medium text-[#4F46E5] bg-[#4F46E5]/10 rounded-full">
-                  Host
-                </span>
-              )}
-            </div>
-
-            {/* Connection status for disconnected players */}
-            {!player.connected && (
-              <span className="text-sm text-red-400">Disconnected</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {players.length < 2 && (
-        <div className="mt-4 text-center text-sm text-slate-500">
-          Need at least 2 players to start
+                {isHost && player.id !== hostId && (
+                  <div className="flex items-center">
+                    {kickingPlayerId === player.id ? (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleConfirmKick(player.id)}
+                          className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setKickingPlayerId(null)}
+                          className="text-xs px-2 py-1 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleKickClick(player.id)}
+                        className={`text-xs px-2 py-1 rounded transition-colors
+                          ${
+                            player.connected
+                              ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                              : "bg-red-100 text-red-600 hover:bg-red-200"
+                          }`}
+                      >
+                        {player.connected ? "Kick" : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
-}
+};
