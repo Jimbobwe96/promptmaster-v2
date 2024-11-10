@@ -6,8 +6,8 @@
     "dev": "nodemon --exec ts-node src/init.ts",
     "build": "tsc",
     "start": "node dist/init.js",
-    "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts"
+    "lint": "eslint . --fix",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@types/express": "^5.0.0",
@@ -25,9 +25,9 @@
     "@types/node": "^22.8.7",
     "@typescript-eslint/eslint-plugin": "^8.13.0",
     "@typescript-eslint/parser": "^8.13.0",
-    "eslint": "^8.53.0",
+    "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "nodemon": "^3.1.7",
-    "prettier": "^3.0.3"
+    "prettier": "^3.3.3"
   }
 }

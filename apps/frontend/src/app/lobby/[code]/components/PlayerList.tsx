@@ -110,8 +110,8 @@ export const PlayerList = ({
                     isCurrentUser
                       ? "bg-indigo-50 border-l-4 border-indigo-500"
                       : player.connected
-                      ? "bg-slate-50"
-                      : "bg-red-50"
+                        ? "bg-slate-50"
+                        : "bg-red-50"
                   }`}
               >
                 <div className="flex items-center space-x-3">

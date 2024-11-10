@@ -258,6 +258,66 @@ export class SocketService {
         }
       );
 
+      socket.on('lobby:leave', async () => {
+        try {
+          // Get lobby code from our map
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Get lobby data
+          const lobby = await this.getLobby(code);
+          if (!lobby) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Remove player from lobby
+          const leavingPlayer = lobby.players.find((p) => p.id === socket.id);
+          lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+
+          // If this was the host, assign new host to first connected player
+          if (socket.id === lobby.hostId && lobby.players.length > 0) {
+            const newHost = lobby.players.find((p) => p.connected);
+            if (newHost) {
+              newHost.isHost = true;
+              lobby.hostId = newHost.id;
+            }
+          }
+
+          // If there are still players in the lobby
+          if (lobby.players.length > 0) {
+            // Update lobby in Redis
+            await this.updateLobby(lobby);
+
+            // Notify remaining players
+            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+          } else {
+            // If no players left, delete the lobby
+            await redisClient.del(`lobby:${code}`);
+
+            // Clean up username reservations
+            if (leavingPlayer) {
+              await redisClient.del(
+                `lobby:${code}:username:${leavingPlayer.username}`
+              );
+            }
+          }
+
+          // Remove socket from room and tracking
+          socket.leave(`lobby:${code}`);
+          this.socketToLobby.delete(socket.id);
+
+          // Notify the client that leave was successful
+          socket.emit('lobby:left');
+        } catch (error) {
+          console.error('Error handling lobby leave:', error);
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to leave lobby');
+        }
+      });
+
       socket.on('lobby:kick_player', async (playerId: string) => {
         try {
           // Get lobby code from our map

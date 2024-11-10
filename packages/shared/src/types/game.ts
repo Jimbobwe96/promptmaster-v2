@@ -52,6 +52,7 @@ export interface ServerToClientEvents {
   "lobby:created": (lobby: Lobby) => void;
   "lobby:joined": (lobby: Lobby) => void;
   "lobby:updated": (lobby: Lobby) => void;
+  "lobby:left": () => void;
   "lobby:closed": (reason: string) => void;
   "lobby:kicked": () => void;
   "lobby:error": (error: LobbyError) => void;
