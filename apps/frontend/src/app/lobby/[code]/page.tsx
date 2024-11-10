@@ -61,13 +61,17 @@ export default function LobbyPage({ params }: LobbyPageProps) {
         if (!mounted) return;
 
         console.error("Lobby initialization error:", err);
-        setConnectionError(
-          err instanceof Error ? err.message : "Failed to join lobby",
-        );
+
+        if (err instanceof Error) {
+          setConnectionError(err.message);
+        } else {
+          setConnectionError("Failed to join lobby");
+        }
+
         setIsLoading(false);
 
         // If no session or invalid, redirect to home
-        if (err.message === "No session data found") {
+        if (err instanceof Error && err.message === "No session data found") {
           router.replace("/");
         }
       }

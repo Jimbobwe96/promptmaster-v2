@@ -33,7 +33,7 @@ export default function Home() {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error("Error response:", errorText);
+        console.error("Error response:", error.message);
         throw new Error(error.message || "Failed to create lobby");
       }
 
