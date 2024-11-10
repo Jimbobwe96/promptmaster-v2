@@ -5,43 +5,26 @@ import type { LobbySettings as LobbySettingsType } from "@promptmaster/shared";
 interface LobbySettingsProps {
   settings: LobbySettingsType;
   isHost: boolean;
+  canStart: boolean;
+  onStart: () => void;
   onUpdate: (settings: Partial<LobbySettingsType>) => void;
 }
 
 export const LobbySettings = ({
   settings,
   isHost,
+  canStart,
+  onStart,
   onUpdate,
 }: LobbySettingsProps) => {
-  console.log("LobbySettings render:", { settings, isHost }); // Debug current props
-
   const handleRoundsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
-    console.log("Rounds change:", {
-      oldValue: settings.roundsPerPlayer,
-      newValue: value,
-      rawInputValue: e.target.value,
-    });
     onUpdate({ roundsPerPlayer: value });
   };
 
   const handleTimeLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
-    console.log("Time limit change:", {
-      oldValue: settings.timeLimit,
-      newValue: value,
-      rawInputValue: e.target.value,
-    });
     onUpdate({ timeLimit: value });
-  };
-
-  // Let's also add mousedown/mouseup handlers to debug dragging
-  const handleMouseDown = () => {
-    console.log("Mouse down on slider");
-  };
-
-  const handleMouseUp = () => {
-    console.log("Mouse up on slider");
   };
 
   return (
@@ -67,8 +50,6 @@ export const LobbySettings = ({
             max={LOBBY_CONSTRAINTS.MAX_ROUNDS_PER_PLAYER}
             value={settings.roundsPerPlayer}
             onChange={handleRoundsChange}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
             disabled={!isHost}
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
               ${
@@ -95,8 +76,6 @@ export const LobbySettings = ({
             max={LOBBY_CONSTRAINTS.MAX_TIME_LIMIT}
             value={settings.timeLimit}
             onChange={handleTimeLimitChange}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
             disabled={!isHost}
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
               ${
@@ -111,11 +90,58 @@ export const LobbySettings = ({
           </div>
         </div>
 
+        {/* Control messages */}
         {!isHost && (
-          <p className="text-sm text-slate-500 italic">
+          <p className="text-sm text-slate-500 italic mb-6">
             Only the host can modify game settings
           </p>
         )}
+
+        {/* Start Game Button */}
+        <div className="pt-4 border-t border-slate-200">
+          <button
+            onClick={onStart}
+            disabled={isHost ? !canStart : true}
+            className={`w-full px-6 py-3 rounded-lg font-medium
+                     transition-all duration-200
+                     ${
+                       isHost
+                         ? "bg-[#4F46E5] text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:translate-y-[-2px]"
+                         : "bg-slate-100 text-slate-600"
+                     }
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     disabled:hover:translate-y-0 disabled:hover:shadow-none`}
+          >
+            {isHost ? (
+              !canStart ? (
+                <>
+                  <span className="block text-lg">Waiting for Players</span>
+                  <span className="block text-sm opacity-75">
+                    Need at least 2 players to start
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="block text-lg">Start Game</span>
+                  <span className="block text-sm opacity-75">
+                    All players are ready
+                  </span>
+                </>
+              )
+            ) : (
+              <>
+                <span className="block text-lg">
+                  {canStart ? "Waiting for Host" : "Waiting for Players"}
+                </span>
+                <span className="block text-sm opacity-75">
+                  {canStart
+                    ? "Game will start soon"
+                    : "Need at least 2 players to start"}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <style jsx>{`

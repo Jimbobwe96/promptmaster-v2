@@ -16,8 +16,8 @@ type SocketWithData = Socket<ClientToServerEvents, ServerToClientEvents>;
 export class SocketService {
   private io: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
   private socketToLobby: Map<string, string> = new Map();
-  private cleanupInterval: NodeJS.Timeout | null = null; // Changed from Timer to Timeout
-  private readonly DISCONNECT_TIMEOUT = 15000; // 15 seconds in milliseconds
+  private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly DISCONNECT_TIMEOUT = 15000;
 
   constructor(server: HTTPServer) {
     console.log('Initializing SocketService...');

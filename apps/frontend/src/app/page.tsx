@@ -14,8 +14,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // REMOVED: socket-related code and effects
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createName.trim()) return;
