@@ -137,13 +137,30 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
       return;
     }
 
+    // Add the new player to the lobby
+    const newPlayer: LobbyPlayer = {
+      id: '', // Will be set when socket connects
+      username,
+      isHost: false,
+      connected: false,
+    };
+
+    lobby.players.push(newPlayer);
+
+    // Save the updated lobby back to Redis
+    await redisClient.setEx(
+      `lobby:${code}`,
+      24 * 60 * 60, // 24 hours (matching create handler)
+      JSON.stringify(lobby)
+    );
+
+    // Reserve username (keeping this from original)
     await redisClient.setEx(
       `lobby:${code}:username:${username}`,
       5 * 60,
       'reserved'
     );
 
-    // Remove return
     res.status(200).json({
       code,
       isHost: false,
