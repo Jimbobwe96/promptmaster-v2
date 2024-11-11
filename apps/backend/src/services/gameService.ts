@@ -13,14 +13,57 @@ export class GameService {
     this.draftPrompts = new Map();
   }
 
+  // async initializeGame(lobbyCode: string): Promise<GameState> {
+  //   try {
+  //     // Get lobby data to access players and settings
+  //     const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+  //     if (!lobbyData) {
+  //       throw new Error('Lobby not found');
+  //     }
+  //     const lobby: Lobby = JSON.parse(lobbyData);
+
+  //     // Get connected players and shuffle them for prompter order
+  //     const connectedPlayers = lobby.players.filter(
+  //       (player) => player.connected
+  //     );
+  //     const prompterOrder = this.shuffleArray(
+  //       connectedPlayers.map((p) => p.id)
+  //     );
+
+  //     // Initialize game state
+  //     const gameState: GameState = {
+  //       lobbyCode,
+  //       rounds: [],
+  //       prompterOrder,
+  //       scores: connectedPlayers.map((player) => ({
+  //         playerId: player.id,
+  //         totalScore: 0,
+  //       })),
+  //     };
+
+  //     // Save game state to Redis
+  //     await this.updateGameState(gameState);
+
+  //     // Start first round
+  //     await this.startNewRound(lobbyCode);
+
+  //     return gameState;
+  //   } catch (error) {
+  //     console.error('Error initializing game:', error);
+  //     throw new Error('Failed to initialize game');
+  //   }
+  // }
+
   async initializeGame(lobbyCode: string): Promise<GameState> {
     try {
+      console.log('Initializing game for lobby:', lobbyCode);
       // Get lobby data to access players and settings
       const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
       if (!lobbyData) {
         throw new Error('Lobby not found');
       }
       const lobby: Lobby = JSON.parse(lobbyData);
+      console.log('Found lobby data:', lobby);
 
       // Get connected players and shuffle them for prompter order
       const connectedPlayers = lobby.players.filter(
@@ -29,11 +72,12 @@ export class GameService {
       const prompterOrder = this.shuffleArray(
         connectedPlayers.map((p) => p.id)
       );
+      console.log('Shuffled prompter order:', prompterOrder);
 
       // Initialize game state
       const gameState: GameState = {
         lobbyCode,
-        rounds: [],
+        rounds: [], // Will add first round after saving initial state
         prompterOrder,
         scores: connectedPlayers.map((player) => ({
           playerId: player.id,
@@ -41,11 +85,32 @@ export class GameService {
         })),
       };
 
-      // Save game state to Redis
+      // Save initial game state
       await this.updateGameState(gameState);
+      console.log('Saved initial game state');
 
-      // Start first round
-      await this.startNewRound(lobbyCode);
+      // Create first round
+      const firstRound: GameRound = {
+        prompterId: prompterOrder[0],
+        prompt: '',
+        guesses: [],
+        status: 'prompting',
+      };
+
+      // Add round to game state
+      gameState.rounds.push(firstRound);
+
+      // Save updated game state with first round
+      await this.updateGameState(gameState);
+      console.log('Added first round to game state:', firstRound);
+
+      // Notify clients about the first round
+      this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', firstRound);
+      console.log('Emitted game:round_started event');
+
+      // Start prompt timer for first round
+      await this.startPromptTimer(lobbyCode);
+      console.log('Started prompt timer for first round');
 
       return gameState;
     } catch (error) {
@@ -225,7 +290,9 @@ export class GameService {
       await this.startGuessingPhase(lobbyCode);
     } catch (error) {
       console.error('Image generation failed:', error);
-      currentRound.imageGenerationError = error.message;
+      if (error instanceof Error) {
+        currentRound.imageGenerationError = error.message;
+      }
       await this.updateGameState(gameState);
 
       // Skip to next round
@@ -353,6 +420,28 @@ export class GameService {
     }
   }
 
+  // private async startPromptTimer(lobbyCode: string): Promise<void> {
+  //   // Clear any existing timer
+  //   this.clearActiveTimer(lobbyCode);
+
+  //   try {
+  //     // Get time limit from lobby settings
+  //     const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+  //     if (!lobbyData) throw new Error('Lobby not found');
+  //     const lobby: Lobby = JSON.parse(lobbyData);
+
+  //     const timer = setTimeout(
+  //       () => this.handlePromptTimeout(lobbyCode),
+  //       lobby.settings.timeLimit * 1000
+  //     );
+
+  //     this.activeGameTimers.set(lobbyCode, timer);
+  //   } catch (error) {
+  //     console.error('Error starting prompt timer:', error);
+  //     throw error;
+  //   }
+  // }
+
   private async startPromptTimer(lobbyCode: string): Promise<void> {
     // Clear any existing timer
     this.clearActiveTimer(lobbyCode);
@@ -369,6 +458,9 @@ export class GameService {
       );
 
       this.activeGameTimers.set(lobbyCode, timer);
+      console.log(
+        `Started prompt timer for ${lobby.settings.timeLimit} seconds`
+      );
     } catch (error) {
       console.error('Error starting prompt timer:', error);
       throw error;
@@ -422,6 +514,14 @@ export class GameService {
       this.activeGameTimers.delete(lobbyCode);
     }
   }
+
+  // private async updateGameState(gameState: GameState): Promise<void> {
+  //   await redisClient.setEx(
+  //     `game:${gameState.lobbyCode}`,
+  //     24 * 60 * 60, // 24 hours
+  //     JSON.stringify(gameState)
+  //   );
+  // }
 
   private async updateGameState(gameState: GameState): Promise<void> {
     await redisClient.setEx(
@@ -497,6 +597,9 @@ export class GameService {
       return data.images[0].url;
     } catch (error) {
       console.error('Error generating image:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error('Image generation failed');
     }
   }

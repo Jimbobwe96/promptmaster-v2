@@ -10,6 +10,7 @@ import type {
 } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
+import { GameService } from './gameService';
 
 type SocketWithData = Socket<ClientToServerEvents, ServerToClientEvents>;
 
@@ -371,6 +372,50 @@ export class SocketService {
         } catch (error) {
           console.error('Error kicking player:', error);
           this.emitError(socket, 'SERVER_ERROR', 'Failed to kick player');
+        }
+      });
+
+      socket.on('lobby:start_game', async () => {
+        try {
+          console.log('Received lobby:start_game event');
+          const code = this.socketToLobby.get(socket.id);
+          console.log('Found lobby code:', code);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Get lobby data
+          const lobby = await this.getLobby(code);
+          if (!lobby) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Verify user is host
+          if (lobby.hostId !== socket.id) {
+            this.emitError(
+              socket,
+              'NOT_HOST',
+              'Only the host can start the game'
+            );
+            return;
+          }
+
+          // Initialize game
+          const gameService = new GameService(this.io);
+          const gameState = await gameService.initializeGame(code);
+
+          // Update lobby status
+          lobby.status = 'playing';
+          await this.updateLobby(lobby);
+
+          console.log('Emitting game:started with state:', gameState);
+          // Notify all clients in the lobby that game has started
+          this.io.to(`lobby:${code}`).emit('game:started', gameState);
+        } catch (error) {
+          console.error('Error starting game:', error);
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to start game');
         }
       });
 
