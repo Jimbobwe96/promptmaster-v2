@@ -2,6 +2,13 @@
 
 PromptMaster is an innovative AI-powered game that pioneers an entirely new usage of AI tools — guessing the *prompt* used to make them.
 
+### Features of PromptMaster
+- Real-time multiplayer gameplay
+- AI-powered image generation
+- Intelligent prompt similarity scoring
+- Customizable game settings
+- Lobby system with host controls
+
 ## Quick Start
 
 ### Prerequisites
