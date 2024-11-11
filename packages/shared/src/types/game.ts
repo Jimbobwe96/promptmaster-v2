@@ -26,20 +26,20 @@ export interface GameRound {
   prompterId: string;
   prompt: string;
   imageUrl?: string;
+  imageGenerationError?: string;
   guesses: {
     playerId: string;
     guess: string;
+    submittedAt: Date;
     score?: number; // 0-100
   }[];
-  timeRemaining: number;
   status: RoundStatus;
 }
 
 export interface GameState {
   lobbyCode: string;
-  currentRound: number;
-  totalRounds: number;
   rounds: GameRound[];
+  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
   scores: {
     playerId: string;
     totalScore: number;
@@ -103,7 +103,6 @@ export type LobbyStatus =
   | "inactive"; // Lobby timed out or manually closed
 
 export type RoundStatus =
-  | "waiting"
   | "prompting"
   | "generating"
   | "guessing"
