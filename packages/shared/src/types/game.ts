@@ -63,10 +63,30 @@ export interface ServerToClientEvents {
   "game:started": (initialState: GameState) => void;
   "game:round_started": (round: GameRound) => void;
   "game:prompt_submitted": (prompterId: string) => void;
+  "game:prompt_draft_changed": (playerId: string, draft: string) => void;
   "game:image_generated": (imageUrl: string) => void;
+  "game:guessing_started": (data: {
+    imageUrl: string;
+    timeLimit: number;
+  }) => void;
   "game:guess_submitted": (playerId: string) => void;
   "game:round_ended": (roundResults: GameRound) => void;
   "game:ended": (finalScores: GameState) => void;
+
+  "game:scoring_started": () => void;
+  "game:results": (data: {
+    originalPrompt: string;
+    guesses: {
+      playerId: string;
+      guess: string;
+      submittedAt: Date;
+      score?: number;
+    }[];
+    scores: {
+      playerId: string;
+      totalScore: number;
+    }[];
+  }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -83,6 +103,7 @@ export interface ClientToServerEvents {
   "lobby:kick_player": (playerId: string) => void;
 
   // Game events...
+  "game:prompt_draft_changed": (playerId: string, draft: string) => void;
   "game:submit_prompt": (prompt: string) => void;
   "game:submit_guess": (guess: string) => void;
 }
