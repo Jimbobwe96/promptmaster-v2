@@ -1,8 +1,9 @@
-FROM node:18-alpine
+# docker/backend.Dockerfile
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package.json and workspace files
+# Install dependencies first
 COPY package*.json ./
 COPY apps/backend/package*.json ./apps/backend/
 COPY packages/shared/package*.json ./packages/shared/
@@ -10,16 +11,35 @@ COPY packages/shared/package*.json ./packages/shared/
 # Install dependencies
 RUN npm install
 
-# Copy source code
-COPY . .
+# Copy source files
+COPY packages/shared/ ./packages/shared/
+COPY apps/backend/ ./apps/backend/
 
-# Build shared package
-RUN cd packages/shared && npm run build
+# Build shared package first
+WORKDIR /app/packages/shared
+RUN npm run build
 
 # Build backend
-RUN cd apps/backend && npm run build
+WORKDIR /app/apps/backend
+RUN npm run build
 
-EXPOSE 4000
+# Production stage
+FROM node:20-alpine AS runner
 
-# Changed to use init.js
+WORKDIR /app
+
+# Copy package files and built files
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/apps/backend/package*.json ./apps/backend/
+COPY --from=builder /app/packages/shared/package*.json ./packages/shared/
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+
+# Install production dependencies only
+ENV NODE_ENV=production
+RUN npm install --only=production
+
+# Set environment variables
+ENV PORT=4000
+
 CMD ["node", "apps/backend/dist/init.js"]
