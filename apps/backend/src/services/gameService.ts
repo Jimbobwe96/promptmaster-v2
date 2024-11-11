@@ -1,5 +1,7 @@
 import { Server } from 'socket.io';
 import { GameState, Lobby, GameRound } from '@promptmaster/shared';
+import { OpenAI } from 'openai';
+import fetch from 'node-fetch';
 import redisClient from '../config/redis';
 
 export class GameService {
@@ -52,6 +54,25 @@ export class GameService {
     }
   }
 
+  async endGame(lobbyCode: string): Promise<void> {
+    try {
+      // Clear any active timers
+      this.clearActiveTimer(lobbyCode);
+
+      // Clean up draft prompts
+      this.draftPrompts.delete(lobbyCode);
+
+      // Delete game state from Redis
+      await redisClient.del(`game:${lobbyCode}`);
+
+      // Notify clients
+      this.io.to(`lobby:${lobbyCode}`).emit('game:ended');
+    } catch (error) {
+      console.error('Error ending game:', error);
+      throw error;
+    }
+  }
+
   async handleDraftPrompt(lobbyCode: string, draft: string): Promise<void> {
     this.draftPrompts.set(lobbyCode, draft);
   }
@@ -74,7 +95,7 @@ export class GameService {
       }
 
       // Clear any existing timer
-      this.clearPromptTimer(lobbyCode);
+      this.clearActiveTimer(lobbyCode);
 
       // Clear draft prompt
       this.draftPrompts.delete(lobbyCode);
@@ -84,208 +105,6 @@ export class GameService {
     } catch (error) {
       console.error('Error handling prompt submission:', error);
       throw error;
-    }
-  }
-
-  private async processPrompt(
-    lobbyCode: string,
-    prompt: string
-  ): Promise<void> {
-    const gameState = await this.getGameState(lobbyCode);
-    if (!gameState) throw new Error('Game not found');
-
-    const currentRound = gameState.rounds[gameState.rounds.length - 1];
-
-    // Update round status and prompt
-    currentRound.status = 'generating';
-    currentRound.prompt = prompt;
-
-    // Save state before starting generation
-    await this.updateGameState(gameState);
-
-    // Notify clients that we're generating
-    this.io
-      .to(`lobby:${lobbyCode}`)
-      .emit('game:prompt_submitted', currentRound.prompterId);
-
-    try {
-      // Generate image
-      const imageUrl = await this.generateImage(prompt);
-
-      // Update round with image URL
-      currentRound.imageUrl = imageUrl;
-      currentRound.status = 'guessing';
-
-      await this.updateGameState(gameState);
-
-      // Start guess phase
-      await this.startGuessingPhase(lobbyCode);
-    } catch (error) {
-      console.error('Image generation failed:', error);
-      currentRound.imageGenerationError = error.message;
-      await this.updateGameState(gameState);
-
-      // Skip to next round
-      await this.startNewRound(lobbyCode);
-    }
-  }
-
-  async endGame(lobbyCode: string): Promise<void> {
-    try {
-      // Clear any active timers
-      this.clearPromptTimer(lobbyCode);
-
-      // Clean up draft prompts
-      this.draftPrompts.delete(lobbyCode);
-
-      // Delete game state from Redis
-      await redisClient.del(`game:${lobbyCode}`);
-
-      // Notify clients
-      this.io.to(`lobby:${lobbyCode}`).emit('game:ended');
-    } catch (error) {
-      console.error('Error ending game:', error);
-      throw error;
-    }
-  }
-
-  private async startNewRound(lobbyCode: string): Promise<void> {
-    const gameState = await this.getGameState(lobbyCode);
-    if (!gameState) {
-      throw new Error('Game not found');
-    }
-
-    // Get current prompter using modulo
-    const currentPrompterId =
-      gameState.prompterOrder[
-        gameState.rounds.length % gameState.prompterOrder.length
-      ];
-
-    // Create new round
-    const newRound: GameRound = {
-      prompterId: currentPrompterId,
-      prompt: '',
-      guesses: [],
-      status: 'prompting',
-    };
-
-    // Add round to game state
-    gameState.rounds.push(newRound);
-    await this.updateGameState(gameState);
-
-    // Start prompt timer and notify clients
-    await this.startPromptTimer(lobbyCode);
-
-    // Notify all clients about new round
-    this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', newRound);
-  }
-
-  private async startPromptTimer(lobbyCode: string): Promise<void> {
-    // Clear any existing timer
-    this.clearPromptTimer(lobbyCode);
-
-    try {
-      // Get time limit from lobby settings
-      const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-      if (!lobbyData) throw new Error('Lobby not found');
-      const lobby: Lobby = JSON.parse(lobbyData);
-
-      const timer = setTimeout(
-        () => this.handlePromptTimeout(lobbyCode),
-        lobby.settings.timeLimit * 1000
-      );
-
-      this.activeGameTimers.set(lobbyCode, timer);
-    } catch (error) {
-      console.error('Error starting prompt timer:', error);
-      throw error;
-    }
-  }
-
-  private async handlePromptTimeout(lobbyCode: string): Promise<void> {
-    try {
-      // Get the draft prompt if it exists
-      const draftPrompt = this.draftPrompts.get(lobbyCode);
-
-      if (draftPrompt?.trim()) {
-        // If there's a draft, submit it
-        const gameState = await this.getGameState(lobbyCode);
-        if (!gameState) throw new Error('Game not found');
-
-        const currentRound = gameState.rounds[gameState.rounds.length - 1];
-        await this.processPrompt(lobbyCode, draftPrompt);
-      } else {
-        // No draft prompt, skip the round
-        await this.startNewRound(lobbyCode);
-      }
-
-      // Clean up
-      this.draftPrompts.delete(lobbyCode);
-      this.activeGameTimers.delete(lobbyCode);
-    } catch (error) {
-      console.error('Error handling prompt timeout:', error);
-      // If anything fails, skip to next round
-      await this.startNewRound(lobbyCode);
-    }
-  }
-
-  private clearPromptTimer(lobbyCode: string): void {
-    const existingTimer = this.activeGameTimers.get(lobbyCode);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.activeGameTimers.delete(lobbyCode);
-    }
-  }
-
-  private async updateGameState(gameState: GameState): Promise<void> {
-    await redisClient.setEx(
-      `game:${gameState.lobbyCode}`,
-      24 * 60 * 60, // 24 hours
-      JSON.stringify(gameState)
-    );
-  }
-
-  private async getGameState(lobbyCode: string): Promise<GameState | null> {
-    const gameData = await redisClient.get(`game:${lobbyCode}`);
-    return gameData ? JSON.parse(gameData) : null;
-  }
-
-  // Placeholder for image generation - we'll implement this later
-  private async generateImage(prompt: string): Promise<string> {
-    // TODO: Implement flux.1 schnell API call
-    throw new Error('Not implemented');
-  }
-
-  private async startGuessingPhase(lobbyCode: string): Promise<void> {
-    try {
-      const gameState = await this.getGameState(lobbyCode);
-      if (!gameState) throw new Error('Game not found');
-
-      const currentRound = gameState.rounds[gameState.rounds.length - 1];
-      if (!currentRound.imageUrl)
-        throw new Error('No image generated for guessing phase');
-
-      // Start guess timer
-      const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-      if (!lobbyData) throw new Error('Lobby not found');
-      const lobby: Lobby = JSON.parse(lobbyData);
-
-      // Create timer for guessing phase
-      const timer = setTimeout(
-        () => this.handleGuessTimeout(lobbyCode),
-        lobby.settings.timeLimit * 1000
-      );
-
-      this.activeGameTimers.set(lobbyCode, timer);
-
-      // Notify clients guessing phase has started
-      this.io.to(`lobby:${lobbyCode}`).emit('game:guessing_started', {
-        imageUrl: currentRound.imageUrl,
-        timeLimit: lobby.settings.timeLimit,
-      });
-    } catch (error) {
-      console.error('Error starting guessing phase:', error);
-      await this.startNewRound(lobbyCode); // Skip round if guessing phase fails to start
     }
   }
 
@@ -340,32 +159,110 @@ export class GameService {
     }
   }
 
-  private async handleGuessTimeout(lobbyCode: string): Promise<void> {
+  private async startNewRound(lobbyCode: string): Promise<void> {
+    const gameState = await this.getGameState(lobbyCode);
+    if (!gameState) {
+      throw new Error('Game not found');
+    }
+
+    // Get current prompter using modulo
+    const currentPrompterId =
+      gameState.prompterOrder[
+        gameState.rounds.length % gameState.prompterOrder.length
+      ];
+
+    // Create new round
+    const newRound: GameRound = {
+      prompterId: currentPrompterId,
+      prompt: '',
+      guesses: [],
+      status: 'prompting',
+    };
+
+    // Add round to game state
+    gameState.rounds.push(newRound);
+    await this.updateGameState(gameState);
+
+    // Start prompt timer and notify clients
+    await this.startPromptTimer(lobbyCode);
+
+    // Notify all clients about new round
+    this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', newRound);
+  }
+
+  private async processPrompt(
+    lobbyCode: string,
+    prompt: string
+  ): Promise<void> {
+    const gameState = await this.getGameState(lobbyCode);
+    if (!gameState) throw new Error('Game not found');
+
+    const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+    // Update round status and prompt
+    currentRound.status = 'generating';
+    currentRound.prompt = prompt;
+
+    // Save state before starting generation
+    await this.updateGameState(gameState);
+
+    // Notify clients that we're generating
+    this.io
+      .to(`lobby:${lobbyCode}`)
+      .emit('game:prompt_submitted', currentRound.prompterId);
+
+    try {
+      // Generate image
+      const imageUrl = await this.generateImage(prompt);
+
+      // Update round with image URL
+      currentRound.imageUrl = imageUrl;
+      currentRound.status = 'guessing';
+
+      await this.updateGameState(gameState);
+
+      // Start guess phase
+      await this.startGuessingPhase(lobbyCode);
+    } catch (error) {
+      console.error('Image generation failed:', error);
+      currentRound.imageGenerationError = error.message;
+      await this.updateGameState(gameState);
+
+      // Skip to next round
+      await this.startNewRound(lobbyCode);
+    }
+  }
+
+  private async startGuessingPhase(lobbyCode: string): Promise<void> {
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
 
-      // Move directly to scoring with whatever guesses we have
-      await this.startScoringPhase(lobbyCode);
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+      if (!currentRound.imageUrl)
+        throw new Error('No image generated for guessing phase');
+
+      // Start guess timer
+      const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+      if (!lobbyData) throw new Error('Lobby not found');
+      const lobby: Lobby = JSON.parse(lobbyData);
+
+      // Create timer for guessing phase
+      const timer = setTimeout(
+        () => this.handleGuessTimeout(lobbyCode),
+        lobby.settings.timeLimit * 1000
+      );
+
+      this.activeGameTimers.set(lobbyCode, timer);
+
+      // Notify clients guessing phase has started
+      this.io.to(`lobby:${lobbyCode}`).emit('game:guessing_started', {
+        imageUrl: currentRound.imageUrl,
+        timeLimit: lobby.settings.timeLimit,
+      });
     } catch (error) {
-      console.error('Error handling guess timeout:', error);
-      await this.startNewRound(lobbyCode); // Skip to next round if something goes wrong
-    }
-  }
-
-  private async getConnectedPlayerCount(lobbyCode: string): Promise<number> {
-    const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-    if (!lobbyData) throw new Error('Lobby not found');
-
-    const lobby: Lobby = JSON.parse(lobbyData);
-    return lobby.players.filter((p) => p.connected).length;
-  }
-
-  private clearActiveTimer(lobbyCode: string): void {
-    const existingTimer = this.activeGameTimers.get(lobbyCode);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.activeGameTimers.delete(lobbyCode);
+      console.error('Error starting guessing phase:', error);
+      await this.startNewRound(lobbyCode); // Skip round if guessing phase fails to start
     }
   }
 
@@ -456,13 +353,102 @@ export class GameService {
     }
   }
 
-  private async scoreGuesses(
-    originalPrompt: string,
-    guesses: string[]
-  ): Promise<number[]> {
-    // We'll need to implement this using OpenAI
-    // For now, returning mock scores for testing
-    return guesses.map(() => Math.floor(Math.random() * 101));
+  private async startPromptTimer(lobbyCode: string): Promise<void> {
+    // Clear any existing timer
+    this.clearActiveTimer(lobbyCode);
+
+    try {
+      // Get time limit from lobby settings
+      const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+      if (!lobbyData) throw new Error('Lobby not found');
+      const lobby: Lobby = JSON.parse(lobbyData);
+
+      const timer = setTimeout(
+        () => this.handlePromptTimeout(lobbyCode),
+        lobby.settings.timeLimit * 1000
+      );
+
+      this.activeGameTimers.set(lobbyCode, timer);
+    } catch (error) {
+      console.error('Error starting prompt timer:', error);
+      throw error;
+    }
+  }
+
+  private async handlePromptTimeout(lobbyCode: string): Promise<void> {
+    try {
+      // Get the draft prompt if it exists
+      const draftPrompt = this.draftPrompts.get(lobbyCode);
+
+      if (draftPrompt?.trim()) {
+        // If there's a draft, submit it
+        const gameState = await this.getGameState(lobbyCode);
+        if (!gameState) throw new Error('Game not found');
+
+        const currentRound = gameState.rounds[gameState.rounds.length - 1];
+        await this.processPrompt(lobbyCode, draftPrompt);
+      } else {
+        // No draft prompt, skip the round
+        await this.startNewRound(lobbyCode);
+      }
+
+      // Clean up
+      this.draftPrompts.delete(lobbyCode);
+      this.activeGameTimers.delete(lobbyCode);
+    } catch (error) {
+      console.error('Error handling prompt timeout:', error);
+      // If anything fails, skip to next round
+      await this.startNewRound(lobbyCode);
+    }
+  }
+
+  private async handleGuessTimeout(lobbyCode: string): Promise<void> {
+    try {
+      const gameState = await this.getGameState(lobbyCode);
+      if (!gameState) throw new Error('Game not found');
+
+      // Move directly to scoring with whatever guesses we have
+      await this.startScoringPhase(lobbyCode);
+    } catch (error) {
+      console.error('Error handling guess timeout:', error);
+      await this.startNewRound(lobbyCode); // Skip to next round if something goes wrong
+    }
+  }
+
+  private clearActiveTimer(lobbyCode: string): void {
+    const existingTimer = this.activeGameTimers.get(lobbyCode);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.activeGameTimers.delete(lobbyCode);
+    }
+  }
+
+  private async updateGameState(gameState: GameState): Promise<void> {
+    await redisClient.setEx(
+      `game:${gameState.lobbyCode}`,
+      24 * 60 * 60, // 24 hours
+      JSON.stringify(gameState)
+    );
+  }
+
+  private async getGameState(lobbyCode: string): Promise<GameState | null> {
+    const gameData = await redisClient.get(`game:${lobbyCode}`);
+    return gameData ? JSON.parse(gameData) : null;
+  }
+
+  private async getConnectedPlayerCount(lobbyCode: string): Promise<number> {
+    const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+    if (!lobbyData) throw new Error('Lobby not found');
+
+    const lobby: Lobby = JSON.parse(lobbyData);
+    return lobby.players.filter((p) => p.connected).length;
+  }
+
+  private async getRoundsPerPlayer(lobbyCode: string): Promise<number> {
+    const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+    if (!lobbyData) throw new Error('Lobby not found');
+    const lobby: Lobby = JSON.parse(lobbyData);
+    return lobby.settings.roundsPerPlayer;
   }
 
   private async isGameComplete(gameState: GameState): Promise<boolean> {
@@ -480,11 +466,103 @@ export class GameService {
     }
   }
 
-  private async getRoundsPerPlayer(lobbyCode: string): Promise<number> {
-    const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-    if (!lobbyData) throw new Error('Lobby not found');
-    const lobby: Lobby = JSON.parse(lobbyData);
-    return lobby.settings.roundsPerPlayer;
+  private async generateImage(prompt: string): Promise<string> {
+    try {
+      const response = await fetch('https://fal.run/fal-ai/fast-many', {
+        method: 'POST',
+        headers: {
+          Authorization: `Key ${process.env.FAL_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          // Keeping default parameters for speed
+          num_images: 1,
+          negative_prompt: 'blurry, ugly, malformed, distorted, broken',
+          high_quality_base: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Image generation failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // The API returns an array of image URLs, we just want the first one
+      if (!data.images?.[0]?.url) {
+        throw new Error('No image URL in response');
+      }
+
+      return data.images[0].url;
+    } catch (error) {
+      console.error('Error generating image:', error);
+      throw new Error('Image generation failed');
+    }
+  }
+
+  private async scoreGuesses(
+    originalPrompt: string,
+    guesses: string[]
+  ): Promise<number[]> {
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      // Create our scoring prompt
+      const prompt = `You are a highly accurate judge of prompt similarity for AI image generation.
+  Given an original prompt and a list of guesses, score each guess from 0-100 based on how similar it is to the original.
+  Consider:
+  - Semantic similarity (meaning)
+  - Key objects/subjects
+  - Descriptive details
+  - Style/mood/atmosphere
+  - Composition elements
+  
+  Original prompt: "${originalPrompt}"
+  
+  Guesses to score:
+  ${guesses.map((guess, i) => `${i + 1}. ${guess}`).join('\n')}
+  
+  Respond with ONLY an array of numbers representing the scores, like: [85, 72, 45]`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4', // Using GPT-4 for better accuracy
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3, // Lower temperature for more consistent scoring
+      });
+
+      // Parse the response to get scores
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error('No response from OpenAI');
+
+      // Extract array from response using regex
+      const match = content.match(/\[(.*?)\]/);
+      if (!match) throw new Error('Invalid response format');
+
+      const scores = JSON.parse(`[${match[1]}]`);
+
+      // Validate scores
+      if (
+        !Array.isArray(scores) ||
+        scores.length !== guesses.length ||
+        !scores.every((s) => typeof s === 'number' && s >= 0 && s <= 100)
+      ) {
+        throw new Error('Invalid scores returned');
+      }
+
+      return scores;
+    } catch (error) {
+      console.error('Error scoring guesses:', error);
+      // Fallback: return random scores if OpenAI fails
+      return guesses.map(() => Math.floor(Math.random() * 101));
+    }
   }
 
   // Fisher-Yates shuffle for randomizing prompter order
