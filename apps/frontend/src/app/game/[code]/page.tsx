@@ -161,7 +161,7 @@ export default function GamePage({ params }: GamePageProps) {
                   ...prev,
                   rounds: [...prev.rounds, round],
                 }
-              : null
+              : null,
           );
         });
 

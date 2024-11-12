@@ -34,13 +34,13 @@ interface UseSocketReturn {
     event: Event,
     callback: Parameters<ServerToClientEvents[Event]> extends []
       ? () => void
-      : (...args: Parameters<ServerToClientEvents[Event]>) => void
+      : (...args: Parameters<ServerToClientEvents[Event]>) => void,
   ) => void;
   off: <Event extends keyof ServerToClientEvents>(
     event: Event,
     callback?: Parameters<ServerToClientEvents[Event]> extends []
       ? () => void
-      : (...args: Parameters<ServerToClientEvents[Event]>) => void
+      : (...args: Parameters<ServerToClientEvents[Event]>) => void,
   ) => void;
 }
 
@@ -164,7 +164,7 @@ export const useSocket = ({
       }
       globalSocket.emit(event, ...args);
     },
-    []
+    [],
   );
 
   const on = useCallback(
@@ -172,11 +172,11 @@ export const useSocket = ({
       event: Event,
       callback: Parameters<ServerToClientEvents[Event]> extends []
         ? () => void
-        : (...args: Parameters<ServerToClientEvents[Event]>) => void
+        : (...args: Parameters<ServerToClientEvents[Event]>) => void,
     ) => {
       globalSocket?.on(event, callback as any);
     },
-    []
+    [],
   );
 
   const off = useCallback(
@@ -184,7 +184,7 @@ export const useSocket = ({
       event: Event,
       callback?: Parameters<ServerToClientEvents[Event]> extends []
         ? () => void
-        : (...args: Parameters<ServerToClientEvents[Event]>) => void
+        : (...args: Parameters<ServerToClientEvents[Event]>) => void,
     ) => {
       if (callback) {
         globalSocket?.off(event, callback as any);
@@ -192,7 +192,7 @@ export const useSocket = ({
         globalSocket?.off(event);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {

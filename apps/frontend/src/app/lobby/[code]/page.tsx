@@ -65,7 +65,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
             // Store the initial game state
             sessionStorage.setItem(
               `game:${code}:state`,
-              JSON.stringify(initialState)
+              JSON.stringify(initialState),
             );
             // Then navigate
             router.replace(`/game/${code}`);

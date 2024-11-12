@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { GameState, Lobby, GameRound } from '@promptmaster/shared';
 import { OpenAI } from 'openai';
-import fetch from 'node-fetch';
+import { fal } from '@fal-ai/client';
 import redisClient from '../config/redis';
 
 export class GameService {
@@ -515,14 +515,6 @@ export class GameService {
     }
   }
 
-  // private async updateGameState(gameState: GameState): Promise<void> {
-  //   await redisClient.setEx(
-  //     `game:${gameState.lobbyCode}`,
-  //     24 * 60 * 60, // 24 hours
-  //     JSON.stringify(gameState)
-  //   );
-  // }
-
   private async updateGameState(gameState: GameState): Promise<void> {
     await redisClient.setEx(
       `game:${gameState.lobbyCode}`,
@@ -568,33 +560,30 @@ export class GameService {
 
   private async generateImage(prompt: string): Promise<string> {
     try {
-      const response = await fetch('https://fal.run/fal-ai/fast-many', {
-        method: 'POST',
-        headers: {
-          Authorization: `Key ${process.env.FAL_KEY}`,
-          'Content-Type': 'application/json',
+      console.log('Starting image generation for prompt:', prompt);
+
+      const result = await fal.subscribe('fal-ai/flux/schnell', {
+        input: {
+          prompt,
+          image_size: 'square',
+          enable_safety_checker: false,
         },
-        body: JSON.stringify({
-          prompt: prompt,
-          // Keeping default parameters for speed
-          num_images: 1,
-          negative_prompt: 'blurry, ugly, malformed, distorted, broken',
-          high_quality_base: false,
-        }),
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === 'IN_PROGRESS') {
+            update.logs.map((log) => log.message).forEach(console.log);
+          }
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(`Image generation failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // The API returns an array of image URLs, we just want the first one
-      if (!data.images?.[0]?.url) {
+      // Extract the image URL from the response
+      const imageUrl = result.data.images[0].url;
+      if (!imageUrl) {
         throw new Error('No image URL in response');
       }
 
-      return data.images[0].url;
+      console.log('Successfully generated image:', imageUrl);
+      return imageUrl;
     } catch (error) {
       console.error('Error generating image:', error);
       if (error instanceof Error) {
