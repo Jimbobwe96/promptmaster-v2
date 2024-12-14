@@ -419,6 +419,9 @@ export class SocketService {
         }
       });
 
+      // WRITE LATER: socket handlers for submit_prompt and prompt_draft_changed
+      // socket.on('game:submit_prompt', )
+
       socket.on('disconnect', async () => {
         try {
           console.log(`Client disconnected: ${socket.id}`);
