@@ -9,6 +9,7 @@ import type {
   RoundStatus,
 } from "@promptmaster/shared";
 import { PromptingPhase } from "./components/PromptingPhase/PromptingPhase";
+import { GuessingPhase } from "./components/GuessingPhase/GuessingPhase";
 
 interface GamePageProps {
   params: Promise<{
@@ -161,7 +162,7 @@ export default function GamePage({ params }: GamePageProps) {
                   ...prev,
                   rounds: [...prev.rounds, round],
                 }
-              : null,
+              : null
           );
         });
 
@@ -170,6 +171,16 @@ export default function GamePage({ params }: GamePageProps) {
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
           if (currentRound) {
             currentRound.status = "generating";
+            setGameState({ ...gameState });
+          }
+        });
+
+        socket?.on("game:guessing_started", ({ imageUrl, timeLimit }) => {
+          if (!mounted || !gameState) return;
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+          if (currentRound) {
+            currentRound.status = "guessing";
+            currentRound.imageUrl = imageUrl;
             setGameState({ ...gameState });
           }
         });
@@ -218,6 +229,10 @@ export default function GamePage({ params }: GamePageProps) {
   // Handle prompt submission
   const handlePromptSubmit = (prompt: string) => {
     emit("game:submit_prompt", prompt);
+  };
+
+  const handleGuessSubmit = (guess: string) => {
+    emit("game:submit_guess", guess);
   };
 
   // Loading state
@@ -297,6 +312,15 @@ export default function GamePage({ params }: GamePageProps) {
             currentPlayerId={currentPlayerId}
             onPromptSubmit={handlePromptSubmit}
             onDraftChange={handleDraftChange}
+          />
+        )}
+
+        {currentRound.status === "guessing" && (
+          <GuessingPhase
+            round={currentRound}
+            timeLimit={lobbySettings.timeLimit}
+            currentPlayerId={currentPlayerId}
+            onGuessSubmit={handleGuessSubmit}
           />
         )}
 
