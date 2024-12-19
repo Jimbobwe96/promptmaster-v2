@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-// import type { LobbyError, Lobby } from "@promptmaster/shared";
 
 export default function Home() {
   const router = useRouter();
