@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { Timer } from "../Timer";
 
 interface GuessInputProps {
-  timeLimit: number;
+  endTime: number;
   onSubmit: (guess: string) => void;
   imageUrl: string;
 }
 
 export const GuessInput: React.FC<GuessInputProps> = ({
-  timeLimit,
+  endTime,
   onSubmit,
   imageUrl,
 }) => {
@@ -61,8 +61,16 @@ export const GuessInput: React.FC<GuessInputProps> = ({
         </div>
 
         <div className="flex justify-between items-center">
-          <Timer
+          {/* <Timer
             duration={timeLimit}
+            onComplete={() => {
+              if (guess.trim()) {
+                onSubmit(guess.trim());
+              }
+            }}
+          /> */}
+          <Timer
+            endTime={endTime} // Add endTime to props interface
             onComplete={() => {
               if (guess.trim()) {
                 onSubmit(guess.trim());

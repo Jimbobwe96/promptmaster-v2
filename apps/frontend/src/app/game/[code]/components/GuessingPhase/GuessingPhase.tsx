@@ -16,6 +16,7 @@ export const GuessingPhase: React.FC<GuessingPhaseProps> = ({
   currentPlayerId,
   onGuessSubmit,
 }) => {
+  console.log("Phase endTime:", round.endTime);
   const isPrompter = round.prompterId === currentPlayerId;
 
   if (!round.imageUrl) {

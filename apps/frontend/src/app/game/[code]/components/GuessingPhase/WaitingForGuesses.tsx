@@ -4,6 +4,7 @@ import { Timer } from "../Timer";
 interface WaitingForGuessesProps {
   timeLimit: number;
   imageUrl: string;
+  endTime: number;
 }
 
 export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({

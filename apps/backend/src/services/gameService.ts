@@ -6,58 +6,14 @@ import redisClient from '../config/redis';
 
 export class GameService {
   private activeGameTimers: Map<string, NodeJS.Timeout>;
-  private draftPrompts: Map<string, string>; // lobbyCode -> current draft prompt
 
   constructor(private io: Server) {
     this.activeGameTimers = new Map();
-    this.draftPrompts = new Map();
   }
-
-  // async initializeGame(lobbyCode: string): Promise<GameState> {
-  //   try {
-  //     // Get lobby data to access players and settings
-  //     const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-  //     if (!lobbyData) {
-  //       throw new Error('Lobby not found');
-  //     }
-  //     const lobby: Lobby = JSON.parse(lobbyData);
-
-  //     // Get connected players and shuffle them for prompter order
-  //     const connectedPlayers = lobby.players.filter(
-  //       (player) => player.connected
-  //     );
-  //     const prompterOrder = this.shuffleArray(
-  //       connectedPlayers.map((p) => p.id)
-  //     );
-
-  //     // Initialize game state
-  //     const gameState: GameState = {
-  //       lobbyCode,
-  //       rounds: [],
-  //       prompterOrder,
-  //       scores: connectedPlayers.map((player) => ({
-  //         playerId: player.id,
-  //         totalScore: 0,
-  //       })),
-  //     };
-
-  //     // Save game state to Redis
-  //     await this.updateGameState(gameState);
-
-  //     // Start first round
-  //     await this.startNewRound(lobbyCode);
-
-  //     return gameState;
-  //   } catch (error) {
-  //     console.error('Error initializing game:', error);
-  //     throw new Error('Failed to initialize game');
-  //   }
-  // }
 
   async initializeGame(lobbyCode: string): Promise<GameState> {
     try {
       console.log('Initializing game for lobby:', lobbyCode);
-      // Get lobby data to access players and settings
       const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
       if (!lobbyData) {
         throw new Error('Lobby not found');
@@ -89,12 +45,17 @@ export class GameService {
       await this.updateGameState(gameState);
       console.log('Saved initial game state');
 
-      // Create first round
+      // Calculate end time for first round
+      const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
+      console.log('Setting round endTime to:', endTime);
+
+      // Create first round with end time
       const firstRound: GameRound = {
         prompterId: prompterOrder[0],
         prompt: '',
         guesses: [],
         status: 'prompting',
+        endTime: endTime,
       };
 
       // Add round to game state
@@ -109,8 +70,20 @@ export class GameService {
       console.log('Emitted game:round_started event');
 
       // Start prompt timer for first round
-      await this.startPromptTimer(lobbyCode);
+      const timer = setTimeout(
+        () => this.handlePromptTimeout(lobbyCode),
+        lobby.settings.timeLimit * 1000
+      );
+      this.activeGameTimers.set(lobbyCode, timer);
+      console.log(
+        'Started prompt timer, ending at',
+        new Date(endTime).toISOString()
+      );
       console.log('Started prompt timer for first round');
+
+      // Emit full game state with the round including endTime
+      this.io.to(`lobby:${lobbyCode}`).emit('game:started', gameState);
+      console.log('Emitting game:started with state:', gameState);
 
       return gameState;
     } catch (error) {
@@ -124,9 +97,6 @@ export class GameService {
       // Clear any active timers
       this.clearActiveTimer(lobbyCode);
 
-      // Clean up draft prompts
-      this.draftPrompts.delete(lobbyCode);
-
       // Delete game state from Redis
       await redisClient.del(`game:${lobbyCode}`);
 
@@ -136,10 +106,6 @@ export class GameService {
       console.error('Error ending game:', error);
       throw error;
     }
-  }
-
-  async handleDraftPrompt(lobbyCode: string, draft: string): Promise<void> {
-    this.draftPrompts.set(lobbyCode, draft);
   }
 
   async handlePromptSubmission(
@@ -161,9 +127,6 @@ export class GameService {
 
       // Clear any existing timer
       this.clearActiveTimer(lobbyCode);
-
-      // Clear draft prompt
-      this.draftPrompts.delete(lobbyCode);
 
       // Update round with prompt and start image generation
       await this.processPrompt(lobbyCode, prompt);
@@ -309,10 +272,11 @@ export class GameService {
       if (!currentRound.imageUrl)
         throw new Error('No image generated for guessing phase');
 
-      // Start guess timer
       const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
       if (!lobbyData) throw new Error('Lobby not found');
       const lobby: Lobby = JSON.parse(lobbyData);
+
+      const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
 
       // Create timer for guessing phase
       const timer = setTimeout(
@@ -322,14 +286,15 @@ export class GameService {
 
       this.activeGameTimers.set(lobbyCode, timer);
 
-      // Notify clients guessing phase has started
+      // Notify clients guessing phase has started with end time
       this.io.to(`lobby:${lobbyCode}`).emit('game:guessing_started', {
         imageUrl: currentRound.imageUrl,
         timeLimit: lobby.settings.timeLimit,
+        endTime,
       });
     } catch (error) {
       console.error('Error starting guessing phase:', error);
-      await this.startNewRound(lobbyCode); // Skip round if guessing phase fails to start
+      await this.startNewRound(lobbyCode);
     }
   }
 
@@ -420,38 +385,32 @@ export class GameService {
     }
   }
 
-  // private async startPromptTimer(lobbyCode: string): Promise<void> {
-  //   // Clear any existing timer
-  //   this.clearActiveTimer(lobbyCode);
-
-  //   try {
-  //     // Get time limit from lobby settings
-  //     const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-  //     if (!lobbyData) throw new Error('Lobby not found');
-  //     const lobby: Lobby = JSON.parse(lobbyData);
-
-  //     const timer = setTimeout(
-  //       () => this.handlePromptTimeout(lobbyCode),
-  //       lobby.settings.timeLimit * 1000
-  //     );
-
-  //     this.activeGameTimers.set(lobbyCode, timer);
-  //   } catch (error) {
-  //     console.error('Error starting prompt timer:', error);
-  //     throw error;
-  //   }
-  // }
+  private calculatePhaseEndTime(durationSeconds: number): number {
+    return Date.now() + durationSeconds * 1000;
+  }
 
   private async startPromptTimer(lobbyCode: string): Promise<void> {
-    // Clear any existing timer
     this.clearActiveTimer(lobbyCode);
 
     try {
-      // Get time limit from lobby settings
       const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
       if (!lobbyData) throw new Error('Lobby not found');
       const lobby: Lobby = JSON.parse(lobbyData);
 
+      // Get game state for current round
+      const gameState = await this.getGameState(lobbyCode);
+      if (!gameState) throw new Error('Game not found');
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+      if (!currentRound) throw new Error('No active round');
+
+      const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
+      console.log('Setting round endTime to:', endTime);
+
+      // Update current round with end time
+      currentRound.endTime = endTime;
+      await this.updateGameState(gameState);
+
+      // Create timer
       const timer = setTimeout(
         () => this.handlePromptTimeout(lobbyCode),
         lobby.settings.timeLimit * 1000
@@ -459,8 +418,11 @@ export class GameService {
 
       this.activeGameTimers.set(lobbyCode, timer);
       console.log(
-        `Started prompt timer for ${lobby.settings.timeLimit} seconds`
+        `Started prompt timer, ending at ${new Date(endTime).toISOString()}`
       );
+
+      // Emit the round with the endTime included
+      this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', currentRound);
     } catch (error) {
       console.error('Error starting prompt timer:', error);
       throw error;
@@ -469,27 +431,50 @@ export class GameService {
 
   private async handlePromptTimeout(lobbyCode: string): Promise<void> {
     try {
-      // Get the draft prompt if it exists
-      const draftPrompt = this.draftPrompts.get(lobbyCode);
+      console.log(`Handling prompt timeout for lobby ${lobbyCode}`);
 
-      if (draftPrompt?.trim()) {
-        // If there's a draft, submit it
-        const gameState = await this.getGameState(lobbyCode);
-        if (!gameState) throw new Error('Game not found');
+      const gameState = await this.getGameState(lobbyCode);
+      if (!gameState) throw new Error('Game not found');
 
-        const currentRound = gameState.rounds[gameState.rounds.length - 1];
-        await this.processPrompt(lobbyCode, draftPrompt);
-      } else {
-        // No draft prompt, skip the round
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+      // Request draft from prompter
+      this.io.to(currentRound.prompterId).emit('game:request_draft');
+
+      // Wait briefly for response
+      try {
+        // Create a promise that will resolve when we get a draft or timeout
+        const draftPromise = new Promise<string | null>((resolve) => {
+          // Set up one-time listener for draft
+          const timer = setTimeout(() => {
+            this.io.removeAllListeners('game:submit_draft');
+            resolve(null);
+          }, 1000); // 1 second timeout
+
+          this.io.once('game:submit_draft', (draft: string) => {
+            clearTimeout(timer);
+            resolve(draft);
+          });
+        });
+
+        const draft = await draftPromise;
+
+        if (draft?.trim()) {
+          console.log(`Received draft prompt: "${draft}"`);
+          await this.processPrompt(lobbyCode, draft.trim());
+        } else {
+          console.log('No draft received or timeout, skipping round');
+          await this.startNewRound(lobbyCode);
+        }
+      } catch (error) {
+        console.error('Error handling draft request:', error);
         await this.startNewRound(lobbyCode);
       }
 
       // Clean up
-      this.draftPrompts.delete(lobbyCode);
       this.activeGameTimers.delete(lobbyCode);
     } catch (error) {
       console.error('Error handling prompt timeout:', error);
-      // If anything fails, skip to next round
       await this.startNewRound(lobbyCode);
     }
   }

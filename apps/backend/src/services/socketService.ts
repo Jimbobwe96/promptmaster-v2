@@ -419,32 +419,25 @@ export class SocketService {
         }
       });
 
-      socket.on(
-        'game:prompt_draft_changed',
-        async (playerId: string, draft: string) => {
-          try {
-            // Get lobby code for this socket
-            const code = this.socketToLobby.get(socket.id);
-            if (!code) {
-              this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
-              return;
-            }
-
-            // Get game service instance
-            const gameService = new GameService(this.io);
-
-            // Handle the draft prompt
-            await gameService.handleDraftPrompt(code, draft);
-          } catch (error) {
-            console.error('Error handling prompt draft:', error);
-            this.emitError(
-              socket,
-              'SERVER_ERROR',
-              'Failed to save prompt draft'
-            );
+      socket.on('game:submit_draft', async (draft: string) => {
+        try {
+          // Get lobby code for this socket
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
           }
+
+          // Create temporary game service instance
+          const gameService = new GameService(this.io);
+
+          // Forward the draft to the game service
+          await gameService.handlePromptSubmission(code, socket.id, draft);
+        } catch (error) {
+          console.error('Error submitting draft:', error);
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to submit draft');
         }
-      );
+      });
 
       socket.on('game:submit_prompt', async (prompt: string) => {
         try {

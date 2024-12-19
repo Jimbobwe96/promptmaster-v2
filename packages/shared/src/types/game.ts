@@ -27,6 +27,7 @@ export interface GameRound {
   prompt: string;
   imageUrl?: string;
   imageGenerationError?: string;
+  endTime?: number; // Add this field
   guesses: {
     playerId: string;
     guess: string;
@@ -56,24 +57,23 @@ export interface ServerToClientEvents {
   "lobby:closed": (reason: string) => void;
   "lobby:kicked": () => void;
   "lobby:error": (error: LobbyError) => void;
-
   "lobby:validated": (lobby: Lobby) => void;
 
   // Game Events
   "game:started": (initialState: GameState) => void;
   "game:round_started": (round: GameRound) => void;
   "game:prompt_submitted": (prompterId: string) => void;
-  "game:prompt_draft_changed": (playerId: string, draft: string) => void;
+  "game:request_draft": () => void;
   "game:image_generated": (imageUrl: string) => void;
   "game:guessing_started": (data: {
     imageUrl: string;
     timeLimit: number;
+    endTime: number;
   }) => void;
   "game:guess_submitted": (playerId: string) => void;
   "game:round_ended": (roundResults: GameRound) => void;
   "game:ended": (finalScores: GameState) => void;
-
-  "game:scoring_started": () => void;
+  "game:scoring_started": (data: { endTime: number }) => void;
   "game:results": (data: {
     originalPrompt: string;
     guesses: {
@@ -90,21 +90,18 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  // Existing events...
+  // Lobby Events
   "lobby:create": (username: string) => void;
   "lobby:join": (code: string, username: string) => void;
   "lobby:leave": () => void;
   "lobby:update_settings": (settings: Partial<LobbySettings>) => void;
-
   "lobby:validate": (data: { code: string; username: string }) => void;
-
-  // Host-only events...
   "lobby:start_game": () => void;
   "lobby:kick_player": (playerId: string) => void;
 
-  // Game events...
-  "game:prompt_draft_changed": (playerId: string, draft: string) => void;
+  // Game Events
   "game:submit_prompt": (prompt: string) => void;
+  "game:submit_draft": (draft: string) => void;
   "game:submit_guess": (guess: string) => void;
 }
 
@@ -163,6 +160,11 @@ export const LOBBY_CONSTRAINTS = {
   MAX_TIME_LIMIT: 30,
   RECONNECTION_WINDOW: 30, // seconds
 } as const;
+
+export interface PhaseTimingData {
+  timeLimit: number;
+  endTime: number;
+}
 
 // Helper type for partial settings updates
 export type LobbySettingsUpdate = Partial<LobbySettings>;
