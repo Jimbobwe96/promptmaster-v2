@@ -107,65 +107,6 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
-        // socket?.on(
-        //   "game:guessing_started",
-        //   ({ imageUrl, timeLimit, endTime }) => {
-        //     if (!mounted || !gameState) return;
-        //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
-        //     if (currentRound) {
-        //       currentRound.status = "guessing";
-        //       currentRound.imageUrl = imageUrl;
-        //       currentRound.endTime = endTime;
-        //       setGameState({ ...gameState });
-        //     }
-        //   }
-        // );
-
-        // socket?.on(
-        //   "game:guessing_started",
-        //   ({ imageUrl, timeLimit, endTime }) => {
-        //     console.log("Received game:guessing_started event:", {
-        //       imageUrl,
-        //       timeLimit,
-        //       endTime,
-        //     });
-
-        //     if (!mounted) return;
-
-        //     setGameState((prevState) => {
-        //       if (!prevState) {
-        //         console.error(
-        //           "No game state available when handling guessing_started"
-        //         );
-        //         return null;
-        //       }
-
-        //       const updatedRounds = prevState.rounds.map((round, index) => {
-        //         if (index === prevState.rounds.length - 1) {
-        //           return {
-        //             ...round,
-        //             status: "guessing",
-        //             imageUrl,
-        //             endTime,
-        //           };
-        //         }
-        //         return round;
-        //       });
-
-        //       const newState = {
-        //         ...prevState,
-        //         rounds: updatedRounds,
-        //       };
-
-        //       console.log(
-        //         "Updated game state after guessing started:",
-        //         newState
-        //       );
-        //       return newState;
-        //     });
-        //   }
-        // );
-
         socket?.on(
           "game:guessing_started",
           ({ imageUrl, timeLimit, endTime }) => {
