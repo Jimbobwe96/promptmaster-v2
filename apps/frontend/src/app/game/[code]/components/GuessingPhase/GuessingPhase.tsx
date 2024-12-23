@@ -43,6 +43,7 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
               alt="AI Generated"
               className="w-full h-64 object-cover rounded-lg mb-4"
             />
+
             <p className="text-slate-600">
               Guess submitted! Waiting for other players...
             </p>
