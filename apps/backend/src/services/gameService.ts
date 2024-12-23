@@ -33,7 +33,7 @@ export class GameService {
       // Initialize game state
       const gameState: GameState = {
         lobbyCode,
-        rounds: [], // Will add first round after saving initial state
+        rounds: [],
         prompterOrder,
         scores: connectedPlayers.map((player) => ({
           playerId: player.id,
@@ -45,17 +45,12 @@ export class GameService {
       await this.updateGameState(gameState);
       console.log('Saved initial game state');
 
-      // Calculate end time for first round
-      const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
-      console.log('Setting round endTime to:', endTime);
-
-      // Create first round with end time
+      // Create first round (without endTime - it'll be set in startPromptTimer)
       const firstRound: GameRound = {
         prompterId: prompterOrder[0],
         prompt: '',
         guesses: [],
         status: 'prompting',
-        endTime: endTime,
       };
 
       // Add round to game state
@@ -65,23 +60,10 @@ export class GameService {
       await this.updateGameState(gameState);
       console.log('Added first round to game state:', firstRound);
 
-      // Notify clients about the first round
-      this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', firstRound);
-      console.log('Emitted game:round_started event');
+      // Start prompt timer for first round (this will set endTime and emit events)
+      await this.startPromptTimer(lobbyCode);
 
-      // Start prompt timer for first round
-      const timer = setTimeout(
-        () => this.handlePromptTimeout(lobbyCode),
-        lobby.settings.timeLimit * 1000
-      );
-      this.activeGameTimers.set(lobbyCode, timer);
-      console.log(
-        'Started prompt timer, ending at',
-        new Date(endTime).toISOString()
-      );
-      console.log('Started prompt timer for first round');
-
-      // Emit full game state with the round including endTime
+      // Emit full game state
       this.io.to(`lobby:${lobbyCode}`).emit('game:started', gameState);
       console.log('Emitting game:started with state:', gameState);
 
@@ -91,6 +73,86 @@ export class GameService {
       throw new Error('Failed to initialize game');
     }
   }
+  // async initializeGame(lobbyCode: string): Promise<GameState> {
+  //   try {
+  //     console.log('Initializing game for lobby:', lobbyCode);
+  //     const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+  //     if (!lobbyData) {
+  //       throw new Error('Lobby not found');
+  //     }
+  //     const lobby: Lobby = JSON.parse(lobbyData);
+  //     console.log('Found lobby data:', lobby);
+
+  //     // Get connected players and shuffle them for prompter order
+  //     const connectedPlayers = lobby.players.filter(
+  //       (player) => player.connected
+  //     );
+  //     const prompterOrder = this.shuffleArray(
+  //       connectedPlayers.map((p) => p.id)
+  //     );
+  //     console.log('Shuffled prompter order:', prompterOrder);
+
+  //     // Initialize game state
+  //     const gameState: GameState = {
+  //       lobbyCode,
+  //       rounds: [], // Will add first round after saving initial state
+  //       prompterOrder,
+  //       scores: connectedPlayers.map((player) => ({
+  //         playerId: player.id,
+  //         totalScore: 0,
+  //       })),
+  //     };
+
+  //     // Save initial game state
+  //     await this.updateGameState(gameState);
+  //     console.log('Saved initial game state');
+
+  //     // Calculate end time for first round
+  //     const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
+  //     console.log('Setting round endTime to:', endTime);
+
+  //     // Create first round with end time
+  //     const firstRound: GameRound = {
+  //       prompterId: prompterOrder[0],
+  //       prompt: '',
+  //       guesses: [],
+  //       status: 'prompting',
+  //       endTime: endTime,
+  //     };
+
+  //     // Add round to game state
+  //     gameState.rounds.push(firstRound);
+
+  //     // Save updated game state with first round
+  //     await this.updateGameState(gameState);
+  //     console.log('Added first round to game state:', firstRound);
+
+  //     // Notify clients about the first round
+  //     this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', firstRound);
+  //     console.log('Emitted game:round_started event');
+
+  //     // Start prompt timer for first round
+  //     const timer = setTimeout(
+  //       () => this.handlePromptTimeout(lobbyCode),
+  //       lobby.settings.timeLimit * 1000
+  //     );
+  //     this.activeGameTimers.set(lobbyCode, timer);
+  //     console.log(
+  //       'Started prompt timer, ending at',
+  //       new Date(endTime).toISOString()
+  //     );
+  //     console.log('Started prompt timer for first round');
+
+  //     // Emit full game state with the round including endTime
+  //     this.io.to(`lobby:${lobbyCode}`).emit('game:started', gameState);
+  //     console.log('Emitting game:started with state:', gameState);
+
+  //     return gameState;
+  //   } catch (error) {
+  //     console.error('Error initializing game:', error);
+  //     throw new Error('Failed to initialize game');
+  //   }
+  // }
 
   async endGame(lobbyCode: string): Promise<void> {
     try {
@@ -438,46 +500,146 @@ export class GameService {
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
 
-      // Request draft from prompter
+      // If round is not in prompting status, a prompt was already submitted
+      if (currentRound.status !== 'prompting') {
+        console.log('Round already has a prompt, no action needed');
+        return;
+      }
+
+      console.log('Requesting draft from prompter...');
       this.io.to(currentRound.prompterId).emit('game:request_draft');
 
-      // Wait briefly for response
       try {
         // Create a promise that will resolve when we get a draft or timeout
         const draftPromise = new Promise<string | null>((resolve) => {
-          // Set up one-time listener for draft
-          const timer = setTimeout(() => {
-            this.io.removeAllListeners('game:submit_draft');
-            resolve(null);
-          }, 1000); // 1 second timeout
-
-          this.io.once('game:submit_draft', (draft: string) => {
-            clearTimeout(timer);
+          const draftHandler = (draft: string) => {
             resolve(draft);
+          };
+
+          // Set up listener with proper cleanup
+          const socket = this.io.sockets.sockets.get(currentRound.prompterId);
+          if (socket) {
+            socket.once('game:submit_draft', draftHandler);
+          }
+
+          // Set timeout with cleanup
+          const timer = setTimeout(() => {
+            if (socket) {
+              socket.removeListener('game:submit_draft', draftHandler);
+            }
+            resolve(null);
+          }, 1000);
+
+          // Additional cleanup
+          draftPromise.finally(() => {
+            clearTimeout(timer);
+            if (socket) {
+              socket.removeListener('game:submit_draft', draftHandler);
+            }
           });
         });
 
         const draft = await draftPromise;
 
-        if (draft?.trim()) {
-          console.log(`Received draft prompt: "${draft}"`);
-          await this.processPrompt(lobbyCode, draft.trim());
+        // Recheck game state to ensure round hasn't changed
+        const updatedGameState = await this.getGameState(lobbyCode);
+        if (!updatedGameState) throw new Error('Game not found');
+
+        const updatedRound =
+          updatedGameState.rounds[updatedGameState.rounds.length - 1];
+
+        // Only proceed if we're still in prompting phase and it's the same round
+        if (
+          updatedRound.status === 'prompting' &&
+          updatedRound.prompterId === currentRound.prompterId
+        ) {
+          if (draft?.trim()) {
+            console.log(`Received valid draft prompt: "${draft}"`);
+            await this.processPrompt(lobbyCode, draft.trim());
+          } else {
+            console.log(
+              'No draft received and no prompt submitted, skipping round'
+            );
+            await this.startNewRound(lobbyCode);
+          }
         } else {
-          console.log('No draft received or timeout, skipping round');
-          await this.startNewRound(lobbyCode);
+          console.log(
+            'Round status changed while waiting for draft, continuing...'
+          );
         }
       } catch (error) {
         console.error('Error handling draft request:', error);
-        await this.startNewRound(lobbyCode);
+
+        // Double check if we still need to skip the round
+        const finalCheckGameState = await this.getGameState(lobbyCode);
+        if (
+          finalCheckGameState?.rounds[finalCheckGameState.rounds.length - 1]
+            .status === 'prompting'
+        ) {
+          console.log(
+            'Error occurred and still in prompting phase, skipping round'
+          );
+          await this.startNewRound(lobbyCode);
+        }
       }
 
       // Clean up
-      this.activeGameTimers.delete(lobbyCode);
+      this.clearActiveTimer(lobbyCode);
     } catch (error) {
       console.error('Error handling prompt timeout:', error);
       await this.startNewRound(lobbyCode);
     }
   }
+
+  // private async handlePromptTimeout(lobbyCode: string): Promise<void> {
+  //   try {
+  //     console.log(`Handling prompt timeout for lobby ${lobbyCode}`);
+
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+  //     // Request draft from prompter
+  //     this.io.to(currentRound.prompterId).emit('game:request_draft');
+
+  //     // Wait briefly for response
+  //     try {
+  //       // Create a promise that will resolve when we get a draft or timeout
+  //       const draftPromise = new Promise<string | null>((resolve) => {
+  //         // Set up one-time listener for draft
+  //         const timer = setTimeout(() => {
+  //           this.io.removeAllListeners('game:submit_draft');
+  //           resolve(null);
+  //         }, 1000); // 1 second timeout
+
+  //         this.io.once('game:submit_draft', (draft: string) => {
+  //           clearTimeout(timer);
+  //           resolve(draft);
+  //         });
+  //       });
+
+  //       const draft = await draftPromise;
+
+  //       if (draft?.trim()) {
+  //         console.log(`Received draft prompt: "${draft}"`);
+  //         await this.processPrompt(lobbyCode, draft.trim());
+  //       } else {
+  //         console.log('No draft received or timeout, skipping round');
+  //         await this.startNewRound(lobbyCode);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error handling draft request:', error);
+  //       await this.startNewRound(lobbyCode);
+  //     }
+
+  //     // Clean up
+  //     this.activeGameTimers.delete(lobbyCode);
+  //   } catch (error) {
+  //     console.error('Error handling prompt timeout:', error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   private async handleGuessTimeout(lobbyCode: string): Promise<void> {
     try {
@@ -550,7 +712,7 @@ export class GameService {
       const result = await fal.subscribe('fal-ai/flux/schnell', {
         input: {
           prompt,
-          image_size: 'square',
+          image_size: 'landscape_4_3',
           enable_safety_checker: false,
         },
         logs: true,

@@ -63,7 +63,7 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="A serene landscape with mountains..."
-              className="w-full h-32 px-4 py-3 rounded-lg border border-slate-200
+              className="w-full h-32 px-4 py-3 rounded-lg border border-slate-200 text-slate-800
                      focus:outline-none focus:ring-2 focus:ring-indigo-500
                      disabled:bg-slate-50 disabled:text-slate-500"
               disabled={isSubmitting}
