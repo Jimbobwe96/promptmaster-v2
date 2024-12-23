@@ -459,6 +459,26 @@ export class SocketService {
         }
       });
 
+      socket.on('game:submit_guess', async (guess: string) => {
+        try {
+          // Get lobby code from our map
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Create game service instance
+          const gameService = new GameService(this.io);
+
+          // Handle the guess submission
+          await gameService.handleGuessSubmission(code, socket.id, guess);
+        } catch (error) {
+          console.error('Error handling guess submission:', error);
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to submit guess');
+        }
+      });
+
       socket.on('disconnect', async () => {
         try {
           console.log(`Client disconnected: ${socket.id}`);
