@@ -7,6 +7,7 @@ import type { GameState, LobbySession } from "@promptmaster/shared";
 import { PromptingPhase } from "./components/PromptingPhase/PromptingPhase";
 import { type PromptInputHandle } from "./components/PromptingPhase/PromptInput";
 import { GuessingPhase } from "./components/GuessingPhase/GuessingPhase";
+import { type GuessInputHandle } from "./components/GuessingPhase/GuessInput";
 
 interface GamePageProps {
   params: Promise<{
@@ -29,6 +30,7 @@ export default function GamePage({ params }: GamePageProps) {
   const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
 
   const promptInputRef = useRef<PromptInputHandle>(null);
+  const guessInputRef = useRef<GuessInputHandle>(null);
 
   useEffect(() => {
     console.log("Setting up socket listeners, socket id:", socket?.id);
@@ -105,19 +107,114 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
+        // socket?.on(
+        //   "game:guessing_started",
+        //   ({ imageUrl, timeLimit, endTime }) => {
+        //     if (!mounted || !gameState) return;
+        //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+        //     if (currentRound) {
+        //       currentRound.status = "guessing";
+        //       currentRound.imageUrl = imageUrl;
+        //       currentRound.endTime = endTime;
+        //       setGameState({ ...gameState });
+        //     }
+        //   }
+        // );
+
+        // socket?.on(
+        //   "game:guessing_started",
+        //   ({ imageUrl, timeLimit, endTime }) => {
+        //     console.log("Received game:guessing_started event:", {
+        //       imageUrl,
+        //       timeLimit,
+        //       endTime,
+        //     });
+
+        //     if (!mounted) return;
+
+        //     setGameState((prevState) => {
+        //       if (!prevState) {
+        //         console.error(
+        //           "No game state available when handling guessing_started"
+        //         );
+        //         return null;
+        //       }
+
+        //       const updatedRounds = prevState.rounds.map((round, index) => {
+        //         if (index === prevState.rounds.length - 1) {
+        //           return {
+        //             ...round,
+        //             status: "guessing",
+        //             imageUrl,
+        //             endTime,
+        //           };
+        //         }
+        //         return round;
+        //       });
+
+        //       const newState = {
+        //         ...prevState,
+        //         rounds: updatedRounds,
+        //       };
+
+        //       console.log(
+        //         "Updated game state after guessing started:",
+        //         newState
+        //       );
+        //       return newState;
+        //     });
+        //   }
+        // );
+
         socket?.on(
           "game:guessing_started",
           ({ imageUrl, timeLimit, endTime }) => {
-            if (!mounted || !gameState) return;
-            const currentRound = gameState.rounds[gameState.rounds.length - 1];
-            if (currentRound) {
-              currentRound.status = "guessing";
-              currentRound.imageUrl = imageUrl;
-              currentRound.endTime = endTime;
-              setGameState({ ...gameState });
-            }
+            console.log("Received game:guessing_started event:", {
+              imageUrl,
+              timeLimit,
+              endTime,
+            });
+
+            if (!mounted) return;
+
+            setGameState((prevState) => {
+              if (!prevState) {
+                console.error(
+                  "No game state available when handling guessing_started"
+                );
+                return null;
+              }
+
+              const updatedRounds = prevState.rounds.map((round, index) => {
+                if (index === prevState.rounds.length - 1) {
+                  return {
+                    ...round,
+                    status: "guessing" as const, // Type this explicitly as RoundStatus
+                    imageUrl,
+                    endTime,
+                  };
+                }
+                return round;
+              });
+
+              return {
+                ...prevState,
+                rounds: updatedRounds,
+              };
+            });
           }
         );
+
+        socket?.on("game:request_guess_draft", () => {
+          console.log("Received guess draft request");
+          if (guessInputRef.current) {
+            const draft = guessInputRef.current.getDraft();
+            console.log("Sending guess draft:", draft);
+            if (draft) {
+              emit("game:submit_guess_draft", draft);
+            }
+          }
+        });
 
         setIsLoading(false);
         setConnectionError(null);
@@ -145,7 +242,8 @@ export default function GamePage({ params }: GamePageProps) {
         socket.off("game:round_started");
         socket.off("game:prompt_submitted");
         socket.off("game:request_draft");
-        socket.off("game:guessing_started");
+        socket.off("game:guessing_started"); // Make sure this is here
+        socket.off("game:request_guess_draft");
         socket.off("game:scoring_started");
         socket.off("game:results");
         socket.off("game:ended");
@@ -252,9 +350,9 @@ export default function GamePage({ params }: GamePageProps) {
         {currentRound.status === "guessing" && (
           <GuessingPhase
             round={currentRound}
-            timeLimit={lobbySettings.timeLimit}
             currentPlayerId={currentPlayerId}
             onGuessSubmit={handleGuessSubmit}
+            ref={guessInputRef}
           />
         )}
 

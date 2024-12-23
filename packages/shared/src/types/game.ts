@@ -71,6 +71,7 @@ export interface ServerToClientEvents {
     endTime: number;
   }) => void;
   "game:guess_submitted": (playerId: string) => void;
+  "game:request_guess_draft": () => void;
   "game:round_ended": (roundResults: GameRound) => void;
   "game:ended": (finalScores: GameState) => void;
   "game:scoring_started": (data: { endTime: number }) => void;
@@ -103,6 +104,7 @@ export interface ClientToServerEvents {
   "game:submit_prompt": (prompt: string) => void;
   "game:submit_draft": (draft: string) => void;
   "game:submit_guess": (guess: string) => void;
+  "game:submit_guess_draft": (draft: string) => void;
 }
 
 export interface LobbySession {
