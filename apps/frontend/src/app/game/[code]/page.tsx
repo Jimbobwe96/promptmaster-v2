@@ -24,9 +24,6 @@ export default function GamePage({ params }: GamePageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [lobbySettings, setLobbySettings] = useState<{ timeLimit: number }>({
-    timeLimit: 30,
-  });
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
 
@@ -62,9 +59,6 @@ export default function GamePage({ params }: GamePageProps) {
         }
 
         const lobby = await validateLobby(code, session.username);
-        setLobbySettings({
-          timeLimit: lobby.settings.timeLimit,
-        });
         
         setPlayers(lobby.players);
 

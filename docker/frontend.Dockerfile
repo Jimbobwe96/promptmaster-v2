@@ -40,11 +40,11 @@ COPY --from=builder /app/apps/frontend/public ./public
 COPY --from=builder /app/apps/frontend/.next/standalone ./
 COPY --from=builder /app/apps/frontend/.next/static ./.next/static
 
-# Modify package.json properly using Node.js
-RUN node -e "const pkg = require('./package.json'); pkg.dependencies['@promptmaster/shared'] = 'file:packages/shared'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+# Change the package.json modification to be more explicit
+RUN node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('./package.json')); pkg.dependencies['@promptmaster/shared'] = 'file:packages/shared'; fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
-# Install production dependencies
-RUN npm install --omit=dev
+# Change this line to use a cleaner install
+RUN npm ci --only=production --ignore-scripts
 
 # Set environment variables
 ENV PORT=3000

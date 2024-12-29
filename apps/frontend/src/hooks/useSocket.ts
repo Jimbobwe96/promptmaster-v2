@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { useRouter } from "next/navigation";

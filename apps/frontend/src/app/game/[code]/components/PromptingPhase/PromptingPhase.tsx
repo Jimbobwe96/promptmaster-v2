@@ -34,7 +34,7 @@ export const PromptingPhase = forwardRef<PromptInputHandle, PromptingPhaseProps>
         ) : (
           <WaitingForPrompt
             endTime={round.endTime}
-            prompterId={round.prompterId}
+            // prompterId={round.prompterId}
             prompterUsername={prompterUsername}
           />
         )}

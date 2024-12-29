@@ -5,13 +5,13 @@ import { Timer } from "../Timer";
 
 interface WaitingForPromptProps {
   endTime: number;
-  prompterId: string;
+  // prompterId: string;
   prompterUsername: string;
 }
 
 export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({
   endTime,
-  prompterId,
+  // prompterId,
   prompterUsername,
 }) => {
   return (
