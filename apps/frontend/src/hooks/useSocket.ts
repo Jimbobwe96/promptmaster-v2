@@ -43,7 +43,7 @@ interface UseSocketReturn {
 }
 
 export const useSocket = ({
-  url = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
+  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
   autoConnect = false,
 }: UseSocketProps = {}): UseSocketReturn => {
   const router = useRouter();

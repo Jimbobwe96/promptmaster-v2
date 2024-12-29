@@ -22,7 +22,13 @@ export default function Home() {
 
     try {
       console.log("Attempting to create lobby...");
-      const response = await fetch("http://localhost:4000/api/lobbies/create", {
+      // const response = await fetch("http://localhost:4000/api/lobbies/create", {
+      // const response = await fetch("/api/lobbies/create", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ username: createName.trim() }),
+      // });
+      const response = await fetch("/api/lobbies/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: createName.trim() }),
@@ -65,6 +71,15 @@ export default function Home() {
     setError(null);
 
     try {
+      // const response = await fetch("/api/lobbies/join", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     username: joinName.trim(),
+      //     code: lobbyCode.trim(),
+      //   }),
+      // });
+
       const response = await fetch("/api/lobbies/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
