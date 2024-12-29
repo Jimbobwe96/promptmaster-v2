@@ -43,8 +43,7 @@ COPY --from=builder /app/apps/frontend/.next/static ./.next/static
 # Change the package.json modification to be more explicit
 RUN node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('./package.json')); pkg.dependencies['@promptmaster/shared'] = 'file:packages/shared'; fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
-# Change this line to use a cleaner install
-RUN npm ci --only=production --ignore-scripts
+RUN npm install --omit=dev --no-package-lock
 
 # Set environment variables
 ENV PORT=3000
