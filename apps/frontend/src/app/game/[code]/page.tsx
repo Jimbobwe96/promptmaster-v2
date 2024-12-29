@@ -3,7 +3,7 @@
 import React, { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
-import type { GameState, LobbySession } from "@promptmaster/shared";
+import type { GameState, LobbySession, LobbyPlayer } from "@promptmaster/shared";
 import { PromptingPhase } from "./components/PromptingPhase/PromptingPhase";
 import { type PromptInputHandle } from "./components/PromptingPhase/PromptInput";
 import { GuessingPhase } from "./components/GuessingPhase/GuessingPhase";
@@ -27,6 +27,7 @@ export default function GamePage({ params }: GamePageProps) {
   const [lobbySettings, setLobbySettings] = useState<{ timeLimit: number }>({
     timeLimit: 30,
   });
+  const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
 
   const promptInputRef = useRef<PromptInputHandle>(null);
@@ -64,6 +65,8 @@ export default function GamePage({ params }: GamePageProps) {
         setLobbySettings({
           timeLimit: lobby.settings.timeLimit,
         });
+        
+        setPlayers(lobby.players);
 
         socket?.on("game:started", (initialState: GameState) => {
           console.log("Received initial game state:", initialState);
@@ -284,6 +287,7 @@ export default function GamePage({ params }: GamePageProps) {
             round={currentRound}
             currentPlayerId={currentPlayerId}
             onPromptSubmit={handlePromptSubmit}
+            players={players}
             ref={promptInputRef}
           />
         )}
