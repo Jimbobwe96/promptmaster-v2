@@ -20,7 +20,7 @@ export const Timer: React.FC<TimerProps> = ({
       "Timer received endTime:",
       endTime,
       "Current time:",
-      Date.now()
+      Date.now(),
     );
   }, [endTime]);
 

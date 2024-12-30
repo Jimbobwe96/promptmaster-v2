@@ -117,7 +117,7 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(
         </form>
       </div>
     );
-  }
+  },
 );
 
 PromptInput.displayName = "PromptInput";

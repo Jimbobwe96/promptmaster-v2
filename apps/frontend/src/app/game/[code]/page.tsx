@@ -3,7 +3,11 @@
 import React, { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
-import type { GameState, LobbySession, LobbyPlayer } from "@promptmaster/shared";
+import type {
+  GameState,
+  LobbySession,
+  LobbyPlayer,
+} from "@promptmaster/shared";
 import { PromptingPhase } from "./components/PromptingPhase/PromptingPhase";
 import { type PromptInputHandle } from "./components/PromptingPhase/PromptInput";
 import { GuessingPhase } from "./components/GuessingPhase/GuessingPhase";
@@ -59,7 +63,7 @@ export default function GamePage({ params }: GamePageProps) {
         }
 
         const lobby = await validateLobby(code, session.username);
-        
+
         setPlayers(lobby.players);
 
         socket?.on("game:started", (initialState: GameState) => {
@@ -118,7 +122,7 @@ export default function GamePage({ params }: GamePageProps) {
             setGameState((prevState) => {
               if (!prevState) {
                 console.error(
-                  "No game state available when handling guessing_started"
+                  "No game state available when handling guessing_started",
                 );
                 return null;
               }
@@ -140,7 +144,7 @@ export default function GamePage({ params }: GamePageProps) {
                 rounds: updatedRounds,
               };
             });
-          }
+          },
         );
 
         socket?.on("game:request_guess_draft", () => {

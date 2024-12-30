@@ -117,7 +117,7 @@ export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(
         </form>
       </div>
     );
-  }
+  },
 );
 
 GuessInput.displayName = "GuessInput";

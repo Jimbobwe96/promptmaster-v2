@@ -14,7 +14,7 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
     console.log("Phase endTime:", round.endTime);
     const isPrompter = round.prompterId === currentPlayerId;
     const hasGuessed = round.guesses.some(
-      (g) => g.playerId === currentPlayerId
+      (g) => g.playerId === currentPlayerId,
     );
 
     // We can return early if endTime isn't set
@@ -58,7 +58,7 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 GuessingPhase.displayName = "GuessingPhase";
