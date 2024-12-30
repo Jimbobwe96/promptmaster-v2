@@ -1,8 +1,9 @@
 # Promptmaster v2
 
-PromptMaster is an innovative AI-powered game that pioneers an entirely new usage of AI tools — guessing the *prompt* used to make them.
+PromptMaster is an innovative AI-powered game that pioneers an entirely new usage of AI tools — guessing the _prompt_ used to make them.
 
 ### Features of PromptMaster
+
 - Real-time multiplayer gameplay
 - AI-powered image generation
 - Intelligent prompt similarity scoring
@@ -12,18 +13,22 @@ PromptMaster is an innovative AI-powered game that pioneers an entirely new usag
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js 20+
 - Redis (for development)
 - Docker and Docker Compose (for production)
 
 ### Development Setup
+
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/yourusername/promptmaster-v2.git
 cd promptmaster-v2
 ```
 
 2. Install all dependencies:
+
 ```bash
 npm install
 ```
@@ -31,11 +36,13 @@ npm install
 3. Set up environment variables:
 
 Frontend (`apps/frontend/.env.local`):
+
 ```
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
 ```
 
 Backend (`apps/backend/.env`):
+
 ```
 FRONTEND_URL=http://localhost:3000
 OPENAI_API_KEY=your_key_here
@@ -45,6 +52,7 @@ FAL_KEY=your_key_here
 4. Start the development servers:
 
 Option 1 - All services in one command:
+
 ```bash
 # Start Redis first in a separate terminal
 redis-server
@@ -54,6 +62,7 @@ npm run dev
 ```
 
 Option 2 - Individual terminals for better log visibility:
+
 ```bash
 # Terminal 1: Start Redis
 redis-server
@@ -71,6 +80,7 @@ npm run dev:frontend
 5. Open http://localhost:3000 in your browser
 
 ### Production Deployment
+
 ```bash
 # Build and start all services
 docker-compose up --build
@@ -81,22 +91,26 @@ docker-compose up --build
 ## Tech Stack
 
 ### Backend:
+
 - Express + TypeScript
 - socket.io (real-time communication)
 - Redis (state management)
 - Zod (validation)
 
 ### Frontend:
+
 - React + Next.js + TypeScript
 - Tailwind CSS
 - socket.io client
 - Zod (shared validation)
 
 ### Developer Tools:
+
 - Docker + Docker Compose (containerization for Redis)
 - ESlint + Prettier
 
 ## Project Structure
+
 ```
 promptmaster-v2/
 ├── apps/

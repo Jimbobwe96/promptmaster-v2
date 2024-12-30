@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { LOBBY_CONSTRAINTS } from "@promptmaster/shared";
-import type { LobbySettings as LobbySettingsType } from "@promptmaster/shared";
+import React, { useState } from 'react';
+import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
+import type { LobbySettings as LobbySettingsType } from '@promptmaster/shared';
 
 interface LobbySettingsProps {
   settings: LobbySettingsType;
@@ -17,7 +17,7 @@ export const LobbySettings = ({
   canStart,
   onStart,
   onUpdate,
-  onLeave,
+  onLeave
 }: LobbySettingsProps) => {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
@@ -63,8 +63,8 @@ export const LobbySettings = ({
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
               ${
                 isHost
-                  ? "bg-slate-200 range-input-host"
-                  : "bg-slate-100 cursor-not-allowed"
+                  ? 'bg-slate-200 range-input-host'
+                  : 'bg-slate-100 cursor-not-allowed'
               }`}
           />
         </div>
@@ -89,8 +89,8 @@ export const LobbySettings = ({
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
               ${
                 isHost
-                  ? "bg-slate-200 range-input-host"
-                  : "bg-slate-100 cursor-not-allowed"
+                  ? 'bg-slate-200 range-input-host'
+                  : 'bg-slate-100 cursor-not-allowed'
               }`}
           />
           <div className="flex justify-between text-xs text-slate-500">
@@ -115,8 +115,8 @@ export const LobbySettings = ({
                      transition-all duration-200
                      ${
                        isHost
-                         ? "bg-[#4F46E5] text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:translate-y-[-2px]"
-                         : "bg-slate-100 text-slate-600"
+                         ? 'bg-[#4F46E5] text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:translate-y-[-2px]'
+                         : 'bg-slate-100 text-slate-600'
                      }
                      disabled:opacity-50 disabled:cursor-not-allowed
                      disabled:hover:translate-y-0 disabled:hover:shadow-none`}
@@ -140,12 +140,12 @@ export const LobbySettings = ({
             ) : (
               <>
                 <span className="block text-lg">
-                  {canStart ? "Waiting for Host" : "Waiting for Players"}
+                  {canStart ? 'Waiting for Host' : 'Waiting for Players'}
                 </span>
                 <span className="block text-sm opacity-75">
                   {canStart
-                    ? "Game will start soon"
-                    : "Need at least 2 players to start"}
+                    ? 'Game will start soon'
+                    : 'Need at least 2 players to start'}
                 </span>
               </>
             )}
@@ -165,8 +165,8 @@ export const LobbySettings = ({
             <div className="absolute bottom-full left-0 right-0 mb-2 p-4 bg-white rounded-lg shadow-lg border border-red-100">
               <p className="text-sm text-slate-600 mb-3">
                 {isHost
-                  ? "Are you sure you want to leave? Host privileges will be transferred to another player."
-                  : "Are you sure you want to leave this lobby?"}
+                  ? 'Are you sure you want to leave? Host privileges will be transferred to another player.'
+                  : 'Are you sure you want to leave this lobby?'}
               </p>
               <div className="flex justify-end space-x-2">
                 <button

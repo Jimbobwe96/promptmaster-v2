@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
-import type { LobbyPlayer } from "@promptmaster/shared";
-import { LOBBY_CONSTRAINTS } from "@promptmaster/shared";
+import React, { useState, useRef, useEffect } from 'react';
+import type { LobbyPlayer } from '@promptmaster/shared';
+import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 
 interface PlayerListProps {
   players: LobbyPlayer[];
@@ -15,7 +15,7 @@ export const PlayerList = ({
   hostId,
   currentUserId,
   isHost,
-  onKickPlayer,
+  onKickPlayer
 }: PlayerListProps) => {
   const [kickingPlayerId, setKickingPlayerId] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -108,18 +108,18 @@ export const PlayerList = ({
                 className={`flex items-center justify-between p-3 rounded-lg transition-colors
                   ${
                     isCurrentUser
-                      ? "bg-indigo-50 border-l-4 border-indigo-500"
+                      ? 'bg-indigo-50 border-l-4 border-indigo-500'
                       : player.connected
-                        ? "bg-slate-50"
-                        : "bg-red-50"
+                        ? 'bg-slate-50'
+                        : 'bg-red-50'
                   }`}
               >
                 <div className="flex items-center space-x-3">
                   <span
                     className={`w-2 h-2 rounded-full ${
                       player.connected
-                        ? "bg-green-400"
-                        : "bg-red-400 animate-pulse"
+                        ? 'bg-green-400'
+                        : 'bg-red-400 animate-pulse'
                     }`}
                   />
                   <div>
@@ -169,11 +169,11 @@ export const PlayerList = ({
                         className={`text-xs px-2 py-1 rounded transition-colors
                           ${
                             player.connected
-                              ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                              : "bg-red-100 text-red-600 hover:bg-red-200"
+                              ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                              : 'bg-red-100 text-red-600 hover:bg-red-200'
                           }`}
                       >
-                        {player.connected ? "Kick" : "Remove"}
+                        {player.connected ? 'Kick' : 'Remove'}
                       </button>
                     )}
                   </div>

@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useState, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { useRouter } from 'next/navigation';
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
-  Lobby,
-} from "@promptmaster/shared";
+  Lobby
+} from '@promptmaster/shared';
 
 type SocketType = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -34,19 +34,19 @@ interface UseSocketReturn {
     event: Event,
     callback: Parameters<ServerToClientEvents[Event]> extends []
       ? () => void
-      : (...args: Parameters<ServerToClientEvents[Event]>) => void,
+      : (...args: Parameters<ServerToClientEvents[Event]>) => void
   ) => void;
   off: <Event extends keyof ServerToClientEvents>(
     event: Event,
     callback?: Parameters<ServerToClientEvents[Event]> extends []
       ? () => void
-      : (...args: Parameters<ServerToClientEvents[Event]>) => void,
+      : (...args: Parameters<ServerToClientEvents[Event]>) => void
   ) => void;
 }
 
 export const useSocket = ({
-  url = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
-  autoConnect = false,
+  url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
+  autoConnect = false
 }: UseSocketProps = {}): UseSocketReturn => {
   const router = useRouter();
   const [isConnected, setIsConnected] = useState(false);
@@ -66,42 +66,42 @@ export const useSocket = ({
         // Only create a new socket if we don't have one
         if (!globalSocket) {
           globalSocket = io(url, {
-            transports: ["websocket"],
+            transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
+            reconnectionDelay: 1000
           });
         }
 
-        globalSocket.on("connect", () => {
-          console.log("Socket connected successfully");
+        globalSocket.on('connect', () => {
+          console.log('Socket connected successfully');
           setIsConnected(true);
           setError(null);
           resolve();
         });
 
-        globalSocket.on("connect_error", (err) => {
-          console.error("Socket connection error:", err);
+        globalSocket.on('connect_error', (err) => {
+          console.error('Socket connection error:', err);
           setError(err);
           setIsConnected(false);
           reject(err);
         });
 
-        globalSocket.on("disconnect", (reason) => {
-          console.log("Socket disconnected:", reason);
+        globalSocket.on('disconnect', (reason) => {
+          console.log('Socket disconnected:', reason);
           setIsConnected(false);
-          if (reason === "io server disconnect") {
+          if (reason === 'io server disconnect') {
             globalSocket?.connect();
           }
         });
 
-        globalSocket.on("lobby:kicked", () => {
-          console.log("You have been kicked from the lobby");
-          const code = window.location.pathname.split("/").pop();
+        globalSocket.on('lobby:kicked', () => {
+          console.log('You have been kicked from the lobby');
+          const code = window.location.pathname.split('/').pop();
           if (code) {
             sessionStorage.removeItem(`lobby:${code}`);
           }
-          router.push("/");
+          router.push('/');
         });
 
         // If socket exists but isn't connected, try to connect
@@ -110,8 +110,8 @@ export const useSocket = ({
         }
       } catch (err) {
         const error =
-          err instanceof Error ? err : new Error("Failed to connect to socket");
-        console.error("Socket initialization error:", error);
+          err instanceof Error ? err : new Error('Failed to connect to socket');
+        console.error('Socket initialization error:', error);
         setError(error);
         reject(error);
       }
@@ -121,7 +121,7 @@ export const useSocket = ({
   const validateLobby = useCallback((code: string, username: string) => {
     return new Promise<Lobby>((resolve, reject) => {
       if (!globalSocket?.connected) {
-        reject(new Error("Socket not connected"));
+        reject(new Error('Socket not connected'));
         return;
       }
 
@@ -133,15 +133,15 @@ export const useSocket = ({
         reject(new Error(error.message));
       };
 
-      globalSocket.once("lobby:validated", handleValidated);
-      globalSocket.once("lobby:error", handleError);
+      globalSocket.once('lobby:validated', handleValidated);
+      globalSocket.once('lobby:error', handleError);
 
-      globalSocket.emit("lobby:validate", { code, username });
+      globalSocket.emit('lobby:validate', { code, username });
 
       setTimeout(() => {
-        globalSocket?.off("lobby:validated", handleValidated);
-        globalSocket?.off("lobby:error", handleError);
-        reject(new Error("Validation timeout"));
+        globalSocket?.off('lobby:validated', handleValidated);
+        globalSocket?.off('lobby:error', handleError);
+        reject(new Error('Validation timeout'));
       }, 10000);
     });
   }, []);
@@ -160,11 +160,11 @@ export const useSocket = ({
       ...args: Parameters<ClientToServerEvents[Event]>
     ) => {
       if (!globalSocket?.connected) {
-        throw new Error("Socket not connected");
+        throw new Error('Socket not connected');
       }
       globalSocket.emit(event, ...args);
     },
-    [],
+    []
   );
 
   const on = useCallback(
@@ -172,11 +172,11 @@ export const useSocket = ({
       event: Event,
       callback: Parameters<ServerToClientEvents[Event]> extends []
         ? () => void
-        : (...args: Parameters<ServerToClientEvents[Event]>) => void,
+        : (...args: Parameters<ServerToClientEvents[Event]>) => void
     ) => {
       globalSocket?.on(event, callback as any);
     },
-    [],
+    []
   );
 
   const off = useCallback(
@@ -184,7 +184,7 @@ export const useSocket = ({
       event: Event,
       callback?: Parameters<ServerToClientEvents[Event]> extends []
         ? () => void
-        : (...args: Parameters<ServerToClientEvents[Event]>) => void,
+        : (...args: Parameters<ServerToClientEvents[Event]>) => void
     ) => {
       if (callback) {
         globalSocket?.off(event, callback as any);
@@ -192,7 +192,7 @@ export const useSocket = ({
         globalSocket?.off(event);
       }
     },
-    [],
+    []
   );
 
   useEffect(() => {
@@ -217,6 +217,6 @@ export const useSocket = ({
     validateLobby,
     emit,
     on,
-    off,
+    off
   };
 };

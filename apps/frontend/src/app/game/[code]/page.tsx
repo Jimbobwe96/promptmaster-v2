@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import React, { use, useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useSocket } from "@/hooks/useSocket";
+import React, { use, useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSocket } from '@/hooks/useSocket';
 import type {
   GameState,
   LobbySession,
-  LobbyPlayer,
-} from "@promptmaster/shared";
-import { PromptingPhase } from "./components/PromptingPhase/PromptingPhase";
-import { type PromptInputHandle } from "./components/PromptingPhase/PromptInput";
-import { GuessingPhase } from "./components/GuessingPhase/GuessingPhase";
-import { type GuessInputHandle } from "./components/GuessingPhase/GuessInput";
+  LobbyPlayer
+} from '@promptmaster/shared';
+import { PromptingPhase } from './components/PromptingPhase/PromptingPhase';
+import { type PromptInputHandle } from './components/PromptingPhase/PromptInput';
+import { GuessingPhase } from './components/GuessingPhase/GuessingPhase';
+import { type GuessInputHandle } from './components/GuessingPhase/GuessInput';
 
 interface GamePageProps {
   params: Promise<{
@@ -29,13 +29,13 @@ export default function GamePage({ params }: GamePageProps) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
-  const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
+  const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
 
   const promptInputRef = useRef<PromptInputHandle>(null);
   const guessInputRef = useRef<GuessInputHandle>(null);
 
   useEffect(() => {
-    console.log("Setting up socket listeners, socket id:", socket?.id);
+    console.log('Setting up socket listeners, socket id:', socket?.id);
 
     let mounted = true;
 
@@ -43,7 +43,7 @@ export default function GamePage({ params }: GamePageProps) {
       try {
         const sessionData = sessionStorage.getItem(`lobby:${code}`);
         if (!sessionData) {
-          throw new Error("No session data found");
+          throw new Error('No session data found');
         }
 
         const session: LobbySession = JSON.parse(sessionData);
@@ -59,19 +59,19 @@ export default function GamePage({ params }: GamePageProps) {
         if (!mounted) return;
 
         if (socket) {
-          setCurrentPlayerId(socket.id || "");
+          setCurrentPlayerId(socket.id || '');
         }
 
         const lobby = await validateLobby(code, session.username);
 
         setPlayers(lobby.players);
 
-        socket?.on("game:started", (initialState: GameState) => {
-          console.log("Received initial game state:", initialState);
+        socket?.on('game:started', (initialState: GameState) => {
+          console.log('Received initial game state:', initialState);
           if (mounted) setGameState(initialState);
         });
 
-        socket?.on("game:round_started", (round) => {
+        socket?.on('game:round_started', (round) => {
           if (!mounted || !gameState) return;
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
           if (currentRound) {
@@ -80,41 +80,41 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
-        socket?.on("game:prompt_submitted", (prompterId) => {
-          console.log("Received game:prompt_submitted event", {
+        socket?.on('game:prompt_submitted', (prompterId) => {
+          console.log('Received game:prompt_submitted event', {
             prompterId,
             mounted,
             hasGameState: !!gameState,
             currentRoundStatus:
-              gameState?.rounds[gameState.rounds.length - 1]?.status,
+              gameState?.rounds[gameState.rounds.length - 1]?.status
           });
 
           if (!mounted || !gameState) return;
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
           if (currentRound) {
-            currentRound.status = "generating";
+            currentRound.status = 'generating';
             setGameState({ ...gameState });
           }
         });
 
-        socket?.on("game:request_draft", () => {
-          console.log("Received draft request");
+        socket?.on('game:request_draft', () => {
+          console.log('Received draft request');
           if (promptInputRef.current) {
             const draft = promptInputRef.current.getDraft();
-            console.log("Sending draft:", draft);
+            console.log('Sending draft:', draft);
             if (draft) {
-              emit("game:submit_draft", draft);
+              emit('game:submit_draft', draft);
             }
           }
         });
 
         socket?.on(
-          "game:guessing_started",
+          'game:guessing_started',
           ({ imageUrl, timeLimit, endTime }) => {
-            console.log("Received game:guessing_started event:", {
+            console.log('Received game:guessing_started event:', {
               imageUrl,
               timeLimit,
-              endTime,
+              endTime
             });
 
             if (!mounted) return;
@@ -122,7 +122,7 @@ export default function GamePage({ params }: GamePageProps) {
             setGameState((prevState) => {
               if (!prevState) {
                 console.error(
-                  "No game state available when handling guessing_started",
+                  'No game state available when handling guessing_started'
                 );
                 return null;
               }
@@ -131,9 +131,9 @@ export default function GamePage({ params }: GamePageProps) {
                 if (index === prevState.rounds.length - 1) {
                   return {
                     ...round,
-                    status: "guessing" as const, // Type this explicitly as RoundStatus
+                    status: 'guessing' as const, // Type this explicitly as RoundStatus
                     imageUrl,
-                    endTime,
+                    endTime
                   };
                 }
                 return round;
@@ -141,19 +141,19 @@ export default function GamePage({ params }: GamePageProps) {
 
               return {
                 ...prevState,
-                rounds: updatedRounds,
+                rounds: updatedRounds
               };
             });
-          },
+          }
         );
 
-        socket?.on("game:request_guess_draft", () => {
-          console.log("Received guess draft request");
+        socket?.on('game:request_guess_draft', () => {
+          console.log('Received guess draft request');
           if (guessInputRef.current) {
             const draft = guessInputRef.current.getDraft();
-            console.log("Sending guess draft:", draft);
+            console.log('Sending guess draft:', draft);
             if (draft) {
-              emit("game:submit_guess_draft", draft);
+              emit('game:submit_guess_draft', draft);
             }
           }
         });
@@ -162,15 +162,15 @@ export default function GamePage({ params }: GamePageProps) {
         setConnectionError(null);
       } catch (err) {
         if (!mounted) return;
-        console.error("Game initialization error:", err);
+        console.error('Game initialization error:', err);
         if (err instanceof Error) {
           setConnectionError(err.message);
         } else {
-          setConnectionError("Failed to join game");
+          setConnectionError('Failed to join game');
         }
         setIsLoading(false);
-        if (err instanceof Error && err.message === "No session data found") {
-          router.replace("/");
+        if (err instanceof Error && err.message === 'No session data found') {
+          router.replace('/');
         }
       }
     };
@@ -180,15 +180,15 @@ export default function GamePage({ params }: GamePageProps) {
     return () => {
       mounted = false;
       if (socket) {
-        socket.off("game:started");
-        socket.off("game:round_started");
-        socket.off("game:prompt_submitted");
-        socket.off("game:request_draft");
-        socket.off("game:guessing_started"); // Make sure this is here
-        socket.off("game:request_guess_draft");
-        socket.off("game:scoring_started");
-        socket.off("game:results");
-        socket.off("game:ended");
+        socket.off('game:started');
+        socket.off('game:round_started');
+        socket.off('game:prompt_submitted');
+        socket.off('game:request_draft');
+        socket.off('game:guessing_started'); // Make sure this is here
+        socket.off('game:request_guess_draft');
+        socket.off('game:scoring_started');
+        socket.off('game:results');
+        socket.off('game:ended');
       }
       disconnect();
     };
@@ -200,15 +200,15 @@ export default function GamePage({ params }: GamePageProps) {
     validateLobby,
     router,
     socket,
-    emit,
+    emit
   ]);
 
   const handlePromptSubmit = (prompt: string) => {
-    emit("game:submit_prompt", prompt);
+    emit('game:submit_prompt', prompt);
   };
 
   const handleGuessSubmit = (guess: string) => {
-    emit("game:submit_guess", guess);
+    emit('game:submit_guess', guess);
   };
 
   if (isLoading) {
@@ -231,7 +231,7 @@ export default function GamePage({ params }: GamePageProps) {
             {connectionError || error?.message}
           </p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push('/')}
             className="px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-all"
           >
             Back to Home
@@ -242,22 +242,22 @@ export default function GamePage({ params }: GamePageProps) {
   }
 
   if (!gameState) {
-    console.log("No game state available");
+    console.log('No game state available');
     return null;
   }
 
   const currentRound = gameState.rounds[gameState.rounds.length - 1];
-  console.log("Current game state:", gameState);
-  console.log("Current round:", currentRound);
+  console.log('Current game state:', gameState);
+  console.log('Current round:', currentRound);
 
   if (!currentRound) {
-    console.log("No current round");
+    console.log('No current round');
     return null;
   }
 
   // Ensure endTime exists before rendering PromptingPhase
-  if (currentRound.status === "prompting" && !currentRound.endTime) {
-    console.log("Waiting for round endTime...");
+  if (currentRound.status === 'prompting' && !currentRound.endTime) {
+    console.log('Waiting for round endTime...');
     return null;
   }
 
@@ -272,15 +272,15 @@ export default function GamePage({ params }: GamePageProps) {
             Round {gameState.rounds.length}
           </h1>
           <p className="text-slate-600">
-            {currentRound.status === "prompting" && "Waiting for prompt..."}
-            {currentRound.status === "generating" && "Generating image..."}
-            {currentRound.status === "guessing" && "Time to guess!"}
-            {currentRound.status === "scoring" && "Scoring guesses..."}
-            {currentRound.status === "results" && "Round results"}
+            {currentRound.status === 'prompting' && 'Waiting for prompt...'}
+            {currentRound.status === 'generating' && 'Generating image...'}
+            {currentRound.status === 'guessing' && 'Time to guess!'}
+            {currentRound.status === 'scoring' && 'Scoring guesses...'}
+            {currentRound.status === 'results' && 'Round results'}
           </p>
         </div>
 
-        {currentRound.status === "prompting" && (
+        {currentRound.status === 'prompting' && (
           <PromptingPhase
             round={currentRound}
             currentPlayerId={currentPlayerId}
@@ -290,7 +290,7 @@ export default function GamePage({ params }: GamePageProps) {
           />
         )}
 
-        {currentRound.status === "guessing" && (
+        {currentRound.status === 'guessing' && (
           <GuessingPhase
             round={currentRound}
             currentPlayerId={currentPlayerId}

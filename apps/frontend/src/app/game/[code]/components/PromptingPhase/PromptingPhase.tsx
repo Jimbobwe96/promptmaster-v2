@@ -1,7 +1,7 @@
-import React, { forwardRef } from "react";
-import { PromptInput, PromptInputHandle } from "./PromptInput";
-import { WaitingForPrompt } from "./WaitingForPrompt";
-import type { GameRound, LobbyPlayer } from "@promptmaster/shared";
+import React, { forwardRef } from 'react';
+import { PromptInput, PromptInputHandle } from './PromptInput';
+import { WaitingForPrompt } from './WaitingForPrompt';
+import type { GameRound, LobbyPlayer } from '@promptmaster/shared';
 
 interface PromptingPhaseProps {
   round: GameRound;
@@ -14,16 +14,16 @@ export const PromptingPhase = forwardRef<
   PromptInputHandle,
   PromptingPhaseProps
 >(({ round, currentPlayerId, onPromptSubmit, players }, ref) => {
-  console.log("Phase endTime:", round.endTime);
+  console.log('Phase endTime:', round.endTime);
   const isPrompter = round.prompterId === currentPlayerId;
 
   // Add this to find the prompter's username
   const prompterUsername =
     players.find((p) => p.id === round.prompterId)?.username ||
-    "Unknown Player";
+    'Unknown Player';
 
   if (!round.endTime) {
-    console.log("No endTime available for round");
+    console.log('No endTime available for round');
     return null;
   }
 
@@ -45,4 +45,4 @@ export const PromptingPhase = forwardRef<
   );
 });
 
-PromptingPhase.displayName = "PromptingPhase";
+PromptingPhase.displayName = 'PromptingPhase';

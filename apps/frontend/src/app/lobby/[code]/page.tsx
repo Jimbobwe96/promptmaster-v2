@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React, { use } from "react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useSocket } from "@/hooks/useSocket";
-import type { Lobby, LobbySession, GameState } from "@promptmaster/shared";
-import { PlayerList } from "./components/PlayerList";
-import { ShareCode } from "./components/ShareCode";
-import { LobbySettings } from "./components/LobbySettings";
+import React, { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSocket } from '@/hooks/useSocket';
+import type { Lobby, LobbySession, GameState } from '@promptmaster/shared';
+import { PlayerList } from './components/PlayerList';
+import { ShareCode } from './components/ShareCode';
+import { LobbySettings } from './components/LobbySettings';
 
 interface LobbyPageProps {
   params: Promise<{
@@ -32,7 +32,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
         // Get session data
         const sessionData = sessionStorage.getItem(`lobby:${code}`);
         if (!sessionData) {
-          throw new Error("No session data found");
+          throw new Error('No session data found');
         }
 
         const session: LobbySession = JSON.parse(sessionData);
@@ -52,20 +52,20 @@ export default function LobbyPage({ params }: LobbyPageProps) {
         setConnectionError(null);
 
         // Set up lobby update listener
-        on("lobby:updated", (updatedLobby) => {
+        on('lobby:updated', (updatedLobby) => {
           if (mounted) {
             setLobby(updatedLobby);
           }
         });
 
         // Set up game start listener
-        on("game:started", (initialState: GameState) => {
+        on('game:started', (initialState: GameState) => {
           if (mounted) {
-            console.log("Received initial game state:", initialState);
+            console.log('Received initial game state:', initialState);
             // Store the initial game state
             sessionStorage.setItem(
               `game:${code}:state`,
-              JSON.stringify(initialState),
+              JSON.stringify(initialState)
             );
             // Then navigate
             router.replace(`/game/${code}`);
@@ -74,19 +74,19 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       } catch (err) {
         if (!mounted) return;
 
-        console.error("Lobby initialization error:", err);
+        console.error('Lobby initialization error:', err);
 
         if (err instanceof Error) {
           setConnectionError(err.message);
         } else {
-          setConnectionError("Failed to join lobby");
+          setConnectionError('Failed to join lobby');
         }
 
         setIsLoading(false);
 
         // If no session or invalid, redirect to home
-        if (err instanceof Error && err.message === "No session data found") {
-          router.replace("/");
+        if (err instanceof Error && err.message === 'No session data found') {
+          router.replace('/');
         }
       }
     };
@@ -96,31 +96,31 @@ export default function LobbyPage({ params }: LobbyPageProps) {
     return () => {
       mounted = false;
       if (socket) {
-        socket.off("lobby:updated");
-        socket.off("game:started");
+        socket.off('lobby:updated');
+        socket.off('game:started');
       }
       disconnect();
     };
   }, [code, connect, disconnect, validateLobby, router, on, socket]);
 
   const handleKickPlayer = (playerId: string) => {
-    emit("lobby:kick_player", playerId);
+    emit('lobby:kick_player', playerId);
   };
 
   const handleLeaveLobby = () => {
     try {
-      emit("lobby:leave");
+      emit('lobby:leave');
 
       // Remove session data
       sessionStorage.removeItem(`lobby:${code}`);
 
       // Set up one-time listener for leave confirmation
-      on("lobby:left", () => {
-        router.push("/");
+      on('lobby:left', () => {
+        router.push('/');
       });
     } catch (error) {
-      console.error("Error leaving lobby:", error);
-      setConnectionError("Failed to leave lobby");
+      console.error('Error leaving lobby:', error);
+      setConnectionError('Failed to leave lobby');
     }
   };
 
@@ -146,7 +146,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
             {connectionError || error?.message}
           </p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push('/')}
             className="px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-all"
           >
             Back to Home
@@ -176,7 +176,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
             <PlayerList
               players={lobby.players}
               hostId={lobby.hostId}
-              currentUserId={socket?.id ?? ""}
+              currentUserId={socket?.id ?? ''}
               isHost={lobby.hostId === socket?.id}
               onKickPlayer={handleKickPlayer}
             />
@@ -187,8 +187,8 @@ export default function LobbyPage({ params }: LobbyPageProps) {
               settings={lobby.settings}
               isHost={lobby.hostId === socket?.id}
               canStart={lobby.players.filter((p) => p.connected).length >= 2}
-              onStart={() => emit("lobby:start_game")}
-              onUpdate={(settings) => emit("lobby:update_settings", settings)}
+              onStart={() => emit('lobby:start_game')}
+              onUpdate={(settings) => emit('lobby:update_settings', settings)}
               onLeave={handleLeaveLobby}
             />
           </div>

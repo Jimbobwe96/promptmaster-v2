@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function Home() {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [joinName, setJoinName] = useState("");
-  const [lobbyCode, setLobbyCode] = useState("");
+  const [createName, setCreateName] = useState('');
+  const [joinName, setJoinName] = useState('');
+  const [lobbyCode, setLobbyCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,19 +21,19 @@ export default function Home() {
     setError(null);
 
     try {
-      console.log("Attempting to create lobby...");
-      const response = await fetch("/api/lobbies/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: createName.trim() }),
+      console.log('Attempting to create lobby...');
+      const response = await fetch('/api/lobbies/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: createName.trim() })
       });
-      console.log("Response status:", response.status);
-      console.log("Response headers:", response.headers);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error("Error response:", error.message);
-        throw new Error(error.message || "Failed to create lobby");
+        console.error('Error response:', error.message);
+        throw new Error(error.message || 'Failed to create lobby');
       }
 
       const lobby = await response.json();
@@ -43,7 +43,7 @@ export default function Home() {
         code: lobby.code,
         username: createName.trim(),
         isHost: true,
-        joinedAt: new Date().toISOString(),
+        joinedAt: new Date().toISOString()
       };
       sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
 
@@ -51,7 +51,7 @@ export default function Home() {
       setIsCreateModalOpen(false);
       router.push(`/lobby/${lobby.code}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create lobby");
+      setError(err instanceof Error ? err.message : 'Failed to create lobby');
     } finally {
       setIsLoading(false);
     }
@@ -65,18 +65,18 @@ export default function Home() {
     setError(null);
 
     try {
-      const response = await fetch("/api/lobbies/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/lobbies/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: joinName.trim(),
-          code: lobbyCode.trim(),
-        }),
+          code: lobbyCode.trim()
+        })
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to join lobby");
+        throw new Error(error.message || 'Failed to join lobby');
       }
 
       const lobby = await response.json();
@@ -86,7 +86,7 @@ export default function Home() {
         code: lobby.code,
         username: joinName.trim(),
         isHost: false,
-        joinedAt: new Date().toISOString(),
+        joinedAt: new Date().toISOString()
       };
       sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
 
@@ -94,7 +94,7 @@ export default function Home() {
       setIsJoinModalOpen(false);
       router.push(`/lobby/${lobby.code}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join lobby");
+      setError(err instanceof Error ? err.message : 'Failed to join lobby');
     } finally {
       setIsLoading(false);
     }
@@ -227,7 +227,7 @@ export default function Home() {
                     Connecting...
                   </>
                 ) : (
-                  "Create Lobby"
+                  'Create Lobby'
                 )}
               </button>
             </form>
@@ -331,7 +331,7 @@ export default function Home() {
                     Connecting...
                   </>
                 ) : (
-                  "Join Lobby"
+                  'Join Lobby'
                 )}
               </button>
             </form>

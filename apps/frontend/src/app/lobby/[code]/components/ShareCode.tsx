@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
 interface ShareCodeProps {
   code: string;
@@ -15,7 +15,7 @@ export function ShareCode({ code }: ShareCodeProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
     } catch (err) {
-      console.error("Failed to copy code:", err);
+      console.error('Failed to copy code:', err);
     }
   };
 
@@ -30,7 +30,7 @@ export function ShareCode({ code }: ShareCodeProps) {
       <div className="flex items-center justify-center gap-4">
         <div className="bg-slate-50 px-6 py-3 rounded-lg">
           <span className="text-2xl font-mono font-bold tracking-wider text-[#4F46E5]">
-            {code.split("").join(" ")}
+            {code.split('').join(' ')}
           </span>
         </div>
 

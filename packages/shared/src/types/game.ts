@@ -50,32 +50,32 @@ export interface GameState {
 // Socket Event Types
 export interface ServerToClientEvents {
   // Lobby Events
-  "lobby:created": (lobby: Lobby) => void;
-  "lobby:joined": (lobby: Lobby) => void;
-  "lobby:updated": (lobby: Lobby) => void;
-  "lobby:left": () => void;
-  "lobby:closed": (reason: string) => void;
-  "lobby:kicked": () => void;
-  "lobby:error": (error: LobbyError) => void;
-  "lobby:validated": (lobby: Lobby) => void;
+  'lobby:created': (lobby: Lobby) => void;
+  'lobby:joined': (lobby: Lobby) => void;
+  'lobby:updated': (lobby: Lobby) => void;
+  'lobby:left': () => void;
+  'lobby:closed': (reason: string) => void;
+  'lobby:kicked': () => void;
+  'lobby:error': (error: LobbyError) => void;
+  'lobby:validated': (lobby: Lobby) => void;
 
   // Game Events
-  "game:started": (initialState: GameState) => void;
-  "game:round_started": (round: GameRound) => void;
-  "game:prompt_submitted": (prompterId: string) => void;
-  "game:request_draft": () => void;
-  "game:image_generated": (imageUrl: string) => void;
-  "game:guessing_started": (data: {
+  'game:started': (initialState: GameState) => void;
+  'game:round_started': (round: GameRound) => void;
+  'game:prompt_submitted': (prompterId: string) => void;
+  'game:request_draft': () => void;
+  'game:image_generated': (imageUrl: string) => void;
+  'game:guessing_started': (data: {
     imageUrl: string;
     timeLimit: number;
     endTime: number;
   }) => void;
-  "game:guess_submitted": (playerId: string) => void;
-  "game:request_guess_draft": () => void;
-  "game:round_ended": (roundResults: GameRound) => void;
-  "game:ended": (finalScores: GameState) => void;
-  "game:scoring_started": (data: { endTime: number }) => void;
-  "game:results": (data: {
+  'game:guess_submitted': (playerId: string) => void;
+  'game:request_guess_draft': () => void;
+  'game:round_ended': (roundResults: GameRound) => void;
+  'game:ended': (finalScores: GameState) => void;
+  'game:scoring_started': (data: { endTime: number }) => void;
+  'game:results': (data: {
     originalPrompt: string;
     guesses: {
       playerId: string;
@@ -92,19 +92,19 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
   // Lobby Events
-  "lobby:create": (username: string) => void;
-  "lobby:join": (code: string, username: string) => void;
-  "lobby:leave": () => void;
-  "lobby:update_settings": (settings: Partial<LobbySettings>) => void;
-  "lobby:validate": (data: { code: string; username: string }) => void;
-  "lobby:start_game": () => void;
-  "lobby:kick_player": (playerId: string) => void;
+  'lobby:create': (username: string) => void;
+  'lobby:join': (code: string, username: string) => void;
+  'lobby:leave': () => void;
+  'lobby:update_settings': (settings: Partial<LobbySettings>) => void;
+  'lobby:validate': (data: { code: string; username: string }) => void;
+  'lobby:start_game': () => void;
+  'lobby:kick_player': (playerId: string) => void;
 
   // Game Events
-  "game:submit_prompt": (prompt: string) => void;
-  "game:submit_draft": (draft: string) => void;
-  "game:submit_guess": (guess: string) => void;
-  "game:submit_guess_draft": (draft: string) => void;
+  'game:submit_prompt': (prompt: string) => void;
+  'game:submit_draft': (draft: string) => void;
+  'game:submit_guess': (guess: string) => void;
+  'game:submit_guess_draft': (draft: string) => void;
 }
 
 export interface LobbySession {
@@ -116,32 +116,32 @@ export interface LobbySession {
 
 // Status Types
 export type LobbyStatus =
-  | "waiting" // Players can join, game hasn't started
-  | "starting" // Brief transition state when game is being initialized
-  | "playing" // Game is in progress
-  | "finished" // Game has ended
-  | "inactive"; // Lobby timed out or manually closed
+  | 'waiting' // Players can join, game hasn't started
+  | 'starting' // Brief transition state when game is being initialized
+  | 'playing' // Game is in progress
+  | 'finished' // Game has ended
+  | 'inactive'; // Lobby timed out or manually closed
 
 export type RoundStatus =
-  | "prompting"
-  | "generating"
-  | "guessing"
-  | "scoring"
-  | "results";
+  | 'prompting'
+  | 'generating'
+  | 'guessing'
+  | 'scoring'
+  | 'results';
 
 // Error Types
 export type LobbyErrorType =
-  | "LOBBY_NOT_FOUND"
-  | "LOBBY_FULL"
-  | "INVALID_CODE"
-  | "USERNAME_TAKEN"
-  | "USERNAME_INVALID"
-  | "NOT_HOST"
-  | "PLAYER_NOT_FOUND"
-  | "MIN_PLAYERS_NOT_MET"
-  | "INVALID_SETTINGS"
-  | "CONNECTION_ERROR"
-  | "SERVER_ERROR";
+  | 'LOBBY_NOT_FOUND'
+  | 'LOBBY_FULL'
+  | 'INVALID_CODE'
+  | 'USERNAME_TAKEN'
+  | 'USERNAME_INVALID'
+  | 'NOT_HOST'
+  | 'PLAYER_NOT_FOUND'
+  | 'MIN_PLAYERS_NOT_MET'
+  | 'INVALID_SETTINGS'
+  | 'CONNECTION_ERROR'
+  | 'SERVER_ERROR';
 
 export interface LobbyError {
   type: LobbyErrorType;
@@ -160,7 +160,7 @@ export const LOBBY_CONSTRAINTS = {
   MAX_ROUNDS_PER_PLAYER: 4,
   MIN_TIME_LIMIT: 5,
   MAX_TIME_LIMIT: 30,
-  RECONNECTION_WINDOW: 30, // seconds
+  RECONNECTION_WINDOW: 30 // seconds
 } as const;
 
 export interface PhaseTimingData {

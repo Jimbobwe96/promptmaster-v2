@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
 import React, {
   useState,
   useCallback,
   forwardRef,
-  useImperativeHandle,
-} from "react";
-import { Timer } from "../Timer";
+  useImperativeHandle
+} from 'react';
+import { Timer } from '../Timer';
 
 interface PromptInputProps {
   endTime: number;
@@ -20,7 +20,7 @@ export interface PromptInputHandle {
 
 export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(
   ({ endTime, onSubmit }, ref) => {
-    const [prompt, setPrompt] = useState("");
+    const [prompt, setPrompt] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +31,7 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(
       try {
         await onSubmit(prompt.trim());
       } catch (error) {
-        console.error("Failed to submit prompt:", error);
+        console.error('Failed to submit prompt:', error);
         setIsSubmitting(false);
       }
     };
@@ -43,7 +43,7 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(
 
     // Expose getDraft to parent component
     useImperativeHandle(ref, () => ({
-      getDraft,
+      getDraft
     }));
 
     return (
@@ -110,14 +110,14 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(
                   Submitting...
                 </span>
               ) : (
-                "Submit Prompt"
+                'Submit Prompt'
               )}
             </button>
           </div>
         </form>
       </div>
     );
-  },
+  }
 );
 
-PromptInput.displayName = "PromptInput";
+PromptInput.displayName = 'PromptInput';

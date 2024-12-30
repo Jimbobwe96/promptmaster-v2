@@ -1,5 +1,5 @@
-import React from "react";
-import { Timer } from "../Timer";
+import React from 'react';
+import { Timer } from '../Timer';
 
 interface WaitingForGuessesProps {
   endTime: number;
@@ -10,7 +10,7 @@ interface WaitingForGuessesProps {
 export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({
   endTime,
   imageUrl,
-  guessCount,
+  guessCount
 }) => {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm text-center">
@@ -27,7 +27,7 @@ export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({
           Other players are trying to guess your prompt...
           <br />
           <span className="font-medium">
-            {guessCount} {guessCount === 1 ? "guess" : "guesses"} submitted
+            {guessCount} {guessCount === 1 ? 'guess' : 'guesses'} submitted
           </span>
         </p>
       </div>

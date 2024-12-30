@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from 'react';
 
 interface TimerProps {
   endTime: number; // Unix timestamp in milliseconds
@@ -9,7 +9,7 @@ interface TimerProps {
 export const Timer: React.FC<TimerProps> = ({
   endTime,
   onComplete,
-  isPaused = false,
+  isPaused = false
 }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isComplete, setIsComplete] = useState(false);
@@ -17,10 +17,10 @@ export const Timer: React.FC<TimerProps> = ({
   // Debug log
   useEffect(() => {
     console.log(
-      "Timer received endTime:",
+      'Timer received endTime:',
       endTime,
-      "Current time:",
-      Date.now(),
+      'Current time:',
+      Date.now()
     );
   }, [endTime]);
 
@@ -29,7 +29,7 @@ export const Timer: React.FC<TimerProps> = ({
     const now = Date.now();
     // Validate endTime
     if (!endTime || isNaN(endTime)) {
-      console.error("Invalid endTime:", endTime);
+      console.error('Invalid endTime:', endTime);
       return 0;
     }
 
@@ -73,14 +73,14 @@ export const Timer: React.FC<TimerProps> = ({
   // Format time as mm:ss with validation
   const formatTime = useCallback((ms: number) => {
     if (isNaN(ms) || ms < 0) {
-      console.error("Invalid time value:", ms);
-      return "0:00";
+      console.error('Invalid time value:', ms);
+      return '0:00';
     }
 
     const seconds = Math.ceil(ms / 1000);
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
   // Calculate progress percentage with validation
@@ -93,9 +93,9 @@ export const Timer: React.FC<TimerProps> = ({
 
   // Determine color based on time left
   const getColor = useCallback(() => {
-    if (progress > 60) return "bg-emerald-500";
-    if (progress > 30) return "bg-amber-500";
-    return "bg-red-500";
+    if (progress > 60) return 'bg-emerald-500';
+    if (progress > 30) return 'bg-amber-500';
+    return 'bg-red-500';
   }, [progress]);
 
   return (
@@ -136,7 +136,7 @@ export const Timer: React.FC<TimerProps> = ({
 
       {/* Text description */}
       <span className="text-sm text-slate-600">
-        {timeLeft > 0 ? "Time Remaining" : "Time's up!"}
+        {timeLeft > 0 ? 'Time Remaining' : "Time's up!"}
       </span>
     </div>
   );

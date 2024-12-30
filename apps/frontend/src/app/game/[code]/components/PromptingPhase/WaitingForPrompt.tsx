@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Timer } from "../Timer";
+import React from 'react';
+import { Timer } from '../Timer';
 
 interface WaitingForPromptProps {
   endTime: number;
@@ -10,7 +10,7 @@ interface WaitingForPromptProps {
 
 export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({
   endTime,
-  prompterUsername,
+  prompterUsername
 }) => {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm text-center">

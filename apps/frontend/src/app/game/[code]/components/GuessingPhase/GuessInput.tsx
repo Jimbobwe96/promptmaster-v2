@@ -2,9 +2,9 @@ import React, {
   useState,
   useCallback,
   forwardRef,
-  useImperativeHandle,
-} from "react";
-import { Timer } from "../Timer";
+  useImperativeHandle
+} from 'react';
+import { Timer } from '../Timer';
 
 interface GuessInputProps {
   endTime: number;
@@ -18,7 +18,7 @@ export interface GuessInputHandle {
 
 export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(
   ({ endTime, imageUrl, onSubmit }, ref) => {
-    const [guess, setGuess] = useState("");
+    const [guess, setGuess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -29,7 +29,7 @@ export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(
       try {
         await onSubmit(guess.trim());
       } catch (error) {
-        console.error("Failed to submit guess:", error);
+        console.error('Failed to submit guess:', error);
         setIsSubmitting(false);
       }
     };
@@ -41,7 +41,7 @@ export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(
 
     // Expose getDraft to parent component
     useImperativeHandle(ref, () => ({
-      getDraft,
+      getDraft
     }));
 
     return (
@@ -110,14 +110,14 @@ export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(
                   Submitting...
                 </span>
               ) : (
-                "Submit Guess"
+                'Submit Guess'
               )}
             </button>
           </div>
         </form>
       </div>
     );
-  },
+  }
 );
 
-GuessInput.displayName = "GuessInput";
+GuessInput.displayName = 'GuessInput';

@@ -14,9 +14,12 @@
     "build": "npm run build:shared && npm run build:backend && npm run build:frontend",
     "build:shared": "cd packages/shared && npm run build",
     "build:backend": "cd apps/backend && npm run build",
-    "build:frontend": "cd apps/frontend && npm run build"
+    "build:frontend": "cd apps/frontend && npm run build",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\""
   },
   "devDependencies": {
-    "concurrently": "^8.0.0"
+    "concurrently": "^8.0.0",
+    "prettier": "^3.3.3"
   }
 }
