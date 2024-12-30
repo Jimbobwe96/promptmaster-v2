@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import React, { forwardRef } from 'react';
 import { GuessInput, GuessInputHandle } from './GuessInput';
 import { WaitingForGuesses } from './WaitingForGuesses';
