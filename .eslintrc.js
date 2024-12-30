@@ -1,8 +1,12 @@
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint'],
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+  plugins: ['@typescript-eslint', 'prettier'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'prettier'
+  ],
   env: {
     node: true,
     es6: true
@@ -12,6 +16,7 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
+    'prettier/prettier': 'error',
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-unused-vars': [
@@ -35,7 +40,8 @@ module.exports = {
       extends: [
         'next/core-web-vitals',
         'plugin:react/recommended',
-        'plugin:react-hooks/recommended'
+        'plugin:react-hooks/recommended',
+        'prettier'
       ],
       env: {
         browser: true,
