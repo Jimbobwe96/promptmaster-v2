@@ -228,7 +228,8 @@ export default function GamePage({ params }: GamePageProps) {
         socket.off('game:round_started');
         socket.off('game:prompt_submitted');
         socket.off('game:request_draft');
-        socket.off('game:guessing_started'); // Make sure this is here
+        socket.off('game:guessing_started');
+        socket.off('game:guess_submitted');
         socket.off('game:request_guess_draft');
         socket.off('game:scoring_started');
         socket.off('game:results');

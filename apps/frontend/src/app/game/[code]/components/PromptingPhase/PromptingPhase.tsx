@@ -17,7 +17,6 @@ export const PromptingPhase = forwardRef<
   console.log('Phase endTime:', round.endTime);
   const isPrompter = round.prompterId === currentPlayerId;
 
-  // Add this to find the prompter's username
   const prompterUsername =
     players.find((p) => p.id === round.prompterId)?.username ||
     'Unknown Player';

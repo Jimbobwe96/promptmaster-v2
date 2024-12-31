@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import React, { forwardRef } from 'react';
 import { GuessInput, GuessInputHandle } from './GuessInput';
 import { WaitingForGuesses } from './WaitingForGuesses';
@@ -19,7 +17,6 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
       (g) => g.playerId === currentPlayerId
     );
 
-    // We can return early if endTime isn't set
     if (!round.endTime) {
       console.log('No endTime available for round');
       return null;
@@ -37,6 +34,7 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
             endTime={round.endTime}
             imageUrl={round.imageUrl}
             guessCount={round.guesses.length}
+            expectedGuessCount={round.expectedGuessCount}
           />
         ) : hasGuessed ? (
           <div className="bg-white rounded-xl p-6 shadow-sm text-center">

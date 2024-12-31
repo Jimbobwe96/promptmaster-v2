@@ -144,32 +144,6 @@ export class GameService {
     }
   }
 
-  // private async startNewRound(lobbyCode: string): Promise<void> {
-  //   const gameState = await this.getGameState(lobbyCode);
-  //   if (!gameState) {
-  //     throw new Error('Game not found');
-  //   }
-
-  //   const currentPrompterId =
-  //     gameState.prompterOrder[
-  //       gameState.rounds.length % gameState.prompterOrder.length
-  //     ];
-
-  //   const newRound: GameRound = {
-  //     prompterId: currentPrompterId,
-  //     prompt: '',
-  //     guesses: [],
-  //     status: 'prompting',
-  //   };
-
-  //   gameState.rounds.push(newRound);
-  //   await this.updateGameState(gameState);
-
-  //   await this.startPromptTimer(lobbyCode);
-
-  //   this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', newRound);
-  // }
-
   private async startNewRound(lobbyCode: string): Promise<void> {
     const gameState = await this.getGameState(lobbyCode);
     if (!gameState) {

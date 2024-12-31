@@ -1,5 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
-
 import React from 'react';
 import { Timer } from '../Timer';
 
@@ -7,12 +5,14 @@ interface WaitingForGuessesProps {
   endTime: number;
   imageUrl: string;
   guessCount: number;
+  expectedGuessCount: number;
 }
 
 export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({
   endTime,
   imageUrl,
-  guessCount
+  guessCount,
+  expectedGuessCount
 }) => {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm text-center">
@@ -29,7 +29,8 @@ export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({
           Other players are trying to guess your prompt...
           <br />
           <span className="font-medium">
-            {guessCount} {guessCount === 1 ? 'guess' : 'guesses'} submitted
+            {guessCount}/{expectedGuessCount}{' '}
+            {guessCount === 1 ? 'guess' : 'guesses'} submitted
           </span>
         </p>
       </div>

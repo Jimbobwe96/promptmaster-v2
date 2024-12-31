@@ -1,6 +1,5 @@
-// src/routes/lobby.ts
 import express, { Request, Response, RequestHandler } from 'express';
-import { z } from 'zod'; // We have this from techstack.rtf
+import { z } from 'zod'; // currently not yet used for validation
 import type { Lobby, LobbyPlayer } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
