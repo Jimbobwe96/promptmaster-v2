@@ -17,6 +17,7 @@ module.exports = {
   },
   rules: {
     'prettier/prettier': 'error',
+    'comma-dangle': ['error', 'never'],
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-unused-vars': [
@@ -46,14 +47,8 @@ module.exports = {
         'react/prop-types': 'off',
         'react/display-name': 'off',
         '@next/next/no-img-element': 'off',
-        'no-console': 'off', // Let's just allow console statements in development
-        // Explicitly disable all Next.js image rules
-        '@next/next/no-html-link-for-pages': 'off',
-        '@next/next/no-sync-scripts': 'off',
-        '@next/next/google-font-display': 'off',
-        '@next/next/google-font-preconnect': 'off',
-        '@next/next/inline-script-id': 'off',
-        '@next/next/next-script-for-ga': 'off'
+        'no-console': 'off',
+        '@next/next/no-html-link-for-pages': 'off'
       },
       settings: {
         react: {

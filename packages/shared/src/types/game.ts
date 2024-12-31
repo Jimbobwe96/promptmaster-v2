@@ -27,7 +27,8 @@ export interface GameRound {
   prompt: string;
   imageUrl?: string;
   imageGenerationError?: string;
-  endTime?: number; // Add this field
+  endTime?: number;
+  expectedGuessCount: number;
   guesses: {
     playerId: string;
     guess: string;

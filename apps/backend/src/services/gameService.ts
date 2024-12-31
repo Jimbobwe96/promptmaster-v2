@@ -113,7 +113,8 @@ export class GameService {
         prompt: '',
         guesses: [],
         status: 'prompting',
-        endTime: endTime
+        endTime: endTime,
+        expectedGuessCount: connectedPlayers.length - 1
       };
 
       gameState.rounds.push(firstRound);
@@ -143,22 +144,55 @@ export class GameService {
     }
   }
 
+  // private async startNewRound(lobbyCode: string): Promise<void> {
+  //   const gameState = await this.getGameState(lobbyCode);
+  //   if (!gameState) {
+  //     throw new Error('Game not found');
+  //   }
+
+  //   const currentPrompterId =
+  //     gameState.prompterOrder[
+  //       gameState.rounds.length % gameState.prompterOrder.length
+  //     ];
+
+  //   const newRound: GameRound = {
+  //     prompterId: currentPrompterId,
+  //     prompt: '',
+  //     guesses: [],
+  //     status: 'prompting',
+  //   };
+
+  //   gameState.rounds.push(newRound);
+  //   await this.updateGameState(gameState);
+
+  //   await this.startPromptTimer(lobbyCode);
+
+  //   this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', newRound);
+  // }
+
   private async startNewRound(lobbyCode: string): Promise<void> {
     const gameState = await this.getGameState(lobbyCode);
     if (!gameState) {
       throw new Error('Game not found');
     }
 
+    const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+    if (!lobbyData) throw new Error('Lobby not found');
+    const lobby: Lobby = JSON.parse(lobbyData);
+
     const currentPrompterId =
       gameState.prompterOrder[
         gameState.rounds.length % gameState.prompterOrder.length
       ];
 
+    const connectedPlayers = lobby.players.filter((p) => p.connected);
+
     const newRound: GameRound = {
       prompterId: currentPrompterId,
       prompt: '',
       guesses: [],
-      status: 'prompting'
+      status: 'prompting',
+      expectedGuessCount: connectedPlayers.length - 1
     };
 
     gameState.rounds.push(newRound);
@@ -462,9 +496,6 @@ export class GameService {
 
       await this.updateGameState(gameState);
 
-      console.log(
-        'game:guess_submitted emitted from the backend to the frontend! (entire lobby)'
-      );
       this.io.to(`lobby:${lobbyCode}`).emit('game:guess_submitted', playerId);
 
       const connectedPlayers = await this.getConnectedPlayerCount(lobbyCode);

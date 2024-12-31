@@ -14,11 +14,11 @@ const app = express();
 const corsOptions: CorsOptions = {
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    process.env.NETWORK_FRONTEND_URL || '',
+    process.env.NETWORK_FRONTEND_URL || ''
   ].filter((url): url is string => !!url), // This is a type guard that ensures we only have strings
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type']
 };
 
 app.use(cors(corsOptions));

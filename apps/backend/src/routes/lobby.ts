@@ -23,7 +23,7 @@ const createLobbySchema = z.object({
   username: z
     .string()
     .min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH)
-    .max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH),
+    .max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH)
 });
 
 const joinLobbySchema = z.object({
@@ -31,7 +31,7 @@ const joinLobbySchema = z.object({
     .string()
     .min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH)
     .max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH),
-  code: z.string().length(LOBBY_CONSTRAINTS.CODE_LENGTH),
+  code: z.string().length(LOBBY_CONSTRAINTS.CODE_LENGTH)
 });
 
 const generateLobbyCode = (): string => {
@@ -62,15 +62,15 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
           id: '',
           username,
           isHost: true,
-          connected: false,
-        },
+          connected: false
+        }
       ],
       settings: {
         roundsPerPlayer: 2,
-        timeLimit: 30,
+        timeLimit: 30
       },
       status: 'waiting',
-      createdAt: new Date(),
+      createdAt: new Date()
     };
 
     await redisClient.setEx(
@@ -88,13 +88,13 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
     // Remove return
     res.status(201).json({
       code,
-      isHost: true,
+      isHost: true
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
         message: 'Invalid username format',
-        details: error.errors,
+        details: error.errors
       });
       return;
     }
@@ -121,7 +121,7 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
 
     if (lobby.status !== 'waiting') {
       res.status(400).json({
-        message: 'This lobby is no longer accepting players',
+        message: 'This lobby is no longer accepting players'
       });
       return;
     }
@@ -142,7 +142,7 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
       id: '', // Will be set when socket connects
       username,
       isHost: false,
-      connected: false,
+      connected: false
     };
 
     lobby.players.push(newPlayer);
@@ -163,13 +163,13 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
 
     res.status(200).json({
       code,
-      isHost: false,
+      isHost: false
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
         message: 'Invalid request format',
-        details: error.errors,
+        details: error.errors
       });
       return;
     }

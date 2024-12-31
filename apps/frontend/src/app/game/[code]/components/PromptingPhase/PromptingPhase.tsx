@@ -7,7 +7,7 @@ interface PromptingPhaseProps {
   round: GameRound;
   currentPlayerId: string;
   onPromptSubmit: (prompt: string) => void;
-  players: LobbyPlayer[]; // Add this
+  players: LobbyPlayer[];
 }
 
 export const PromptingPhase = forwardRef<

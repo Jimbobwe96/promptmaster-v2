@@ -6,7 +6,7 @@ import type {
   Lobby,
   LobbyError,
   LobbyErrorType,
-  LobbySettings,
+  LobbySettings
 } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
@@ -27,9 +27,9 @@ export class SocketService {
       cors: {
         origin: process.env.FRONTEND_URL,
         methods: ['GET', 'POST'],
-        credentials: true,
+        credentials: true
       },
-      transports: ['websocket'],
+      transports: ['websocket']
     });
 
     this.setupEventHandlers();
@@ -225,7 +225,7 @@ export class SocketService {
             // Validate new settings
             const newSettings = {
               ...lobby.settings,
-              ...settings,
+              ...settings
             };
 
             if (
@@ -522,7 +522,7 @@ export class SocketService {
             'Players status:',
             lobbyData.players.map((p) => ({
               username: p.username,
-              connected: p.connected,
+              connected: p.connected
             }))
           );
 
@@ -567,7 +567,7 @@ export class SocketService {
           if (error instanceof Error) {
             console.error('Full error details:', {
               message: error.message,
-              stack: error.stack,
+              stack: error.stack
             });
           } else {
             // If it's not an Error object, just log what we have
