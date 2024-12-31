@@ -147,6 +147,50 @@ export default function GamePage({ params }: GamePageProps) {
           }
         );
 
+        socket?.on('game:guess_submitted', (playerId) => {
+          if (!mounted) return;
+
+          setGameState((prevState) => {
+            if (!prevState) return null;
+
+            // Get current round
+            const currentRound = prevState.rounds[prevState.rounds.length - 1];
+            if (!currentRound) return prevState;
+
+            // Only add guess if it doesn't exist already
+            if (!currentRound.guesses.some((g) => g.playerId === playerId)) {
+              // Create new guess array with the new guess
+              const updatedGuesses = [
+                ...currentRound.guesses,
+                {
+                  playerId,
+                  guess: '', // We don't know the guess content on other clients
+                  submittedAt: new Date()
+                }
+              ];
+
+              // Create updated rounds array with the new guess
+              const updatedRounds = prevState.rounds.map((round, index) => {
+                if (index === prevState.rounds.length - 1) {
+                  return {
+                    ...round,
+                    guesses: updatedGuesses
+                  };
+                }
+                return round;
+              });
+
+              // Return new state with updated rounds
+              return {
+                ...prevState,
+                rounds: updatedRounds
+              };
+            }
+
+            return prevState;
+          });
+        });
+
         socket?.on('game:request_guess_draft', () => {
           console.log('Received guess draft request');
           if (guessInputRef.current) {

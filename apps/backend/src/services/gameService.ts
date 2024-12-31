@@ -104,8 +104,8 @@ export class GameService {
         prompterOrder,
         scores: connectedPlayers.map((player) => ({
           playerId: player.id,
-          totalScore: 0,
-        })),
+          totalScore: 0
+        }))
       };
 
       const firstRound: GameRound = {
@@ -113,7 +113,7 @@ export class GameService {
         prompt: '',
         guesses: [],
         status: 'prompting',
-        endTime: endTime,
+        endTime: endTime
       };
 
       gameState.rounds.push(firstRound);
@@ -158,7 +158,7 @@ export class GameService {
       prompterId: currentPrompterId,
       prompt: '',
       guesses: [],
-      status: 'prompting',
+      status: 'prompting'
     };
 
     gameState.rounds.push(newRound);
@@ -372,14 +372,14 @@ export class GameService {
         input: {
           prompt,
           image_size: 'landscape_4_3',
-          enable_safety_checker: false,
+          enable_safety_checker: false
         },
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === 'IN_PROGRESS') {
             update.logs.map((log) => log.message).forEach(console.log);
           }
-        },
+        }
       });
 
       const imageUrl = result.data.images[0].url;
@@ -425,7 +425,7 @@ export class GameService {
       this.io.to(`lobby:${lobbyCode}`).emit('game:guessing_started', {
         imageUrl: currentRound.imageUrl,
         timeLimit: lobby.settings.timeLimit,
-        endTime,
+        endTime
       });
     } catch (error) {
       console.error('Error starting guessing phase:', error);
@@ -457,11 +457,14 @@ export class GameService {
       currentRound.guesses.push({
         playerId,
         guess,
-        submittedAt: new Date(),
+        submittedAt: new Date()
       });
 
       await this.updateGameState(gameState);
 
+      console.log(
+        'game:guess_submitted emitted from the backend to the frontend! (entire lobby)'
+      );
       this.io.to(`lobby:${lobbyCode}`).emit('game:guess_submitted', playerId);
 
       const connectedPlayers = await this.getConnectedPlayerCount(lobbyCode);
@@ -544,7 +547,7 @@ export class GameService {
   ): Promise<number[]> {
     try {
       const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+        apiKey: process.env.OPENAI_API_KEY
       });
 
       const prompt = `You are a highly accurate judge of prompt similarity for AI image generation.
@@ -568,10 +571,10 @@ export class GameService {
         messages: [
           {
             role: 'user',
-            content: prompt,
-          },
+            content: prompt
+          }
         ],
-        temperature: 0.3,
+        temperature: 0.3
       });
 
       const content = response.choices[0]?.message?.content;
@@ -611,7 +614,7 @@ export class GameService {
       this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
         originalPrompt: currentRound.prompt,
         guesses: currentRound.guesses,
-        scores: gameState.scores,
+        scores: gameState.scores
       });
 
       const gameComplete = await this.isGameComplete(gameState);
