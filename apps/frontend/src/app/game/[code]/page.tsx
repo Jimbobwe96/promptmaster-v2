@@ -202,6 +202,34 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
+        socket?.on('game:scoring_started', () => {
+          if (!mounted) return;
+
+          setGameState((prevState) => {
+            if (!prevState) {
+              console.error(
+                'No game state available when handling scoring_started'
+              );
+              return null;
+            }
+
+            const updatedRounds = prevState.rounds.map((round, index) => {
+              if (index === prevState.rounds.length - 1) {
+                return {
+                  ...round,
+                  status: 'scoring' as const
+                };
+              }
+              return round;
+            });
+
+            return {
+              ...prevState,
+              rounds: updatedRounds
+            };
+          });
+        });
+
         setIsLoading(false);
         setConnectionError(null);
       } catch (err) {
@@ -308,9 +336,6 @@ export default function GamePage({ params }: GamePageProps) {
 
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-[#4F46E5] opacity-5 rounded-full -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#F97066] opacity-5 rounded-full translate-y-1/2 -translate-x-1/2" />
-
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-slate-800 mb-2">

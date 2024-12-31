@@ -414,6 +414,12 @@ export class GameService {
       if (!gameState) throw new Error('Game not found');
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+      console.log('Starting guessing phase:', {
+        lobbyCode,
+        prompterId: currentRound.prompterId,
+        expectedGuessCount: currentRound.expectedGuessCount
+      });
       if (!currentRound.imageUrl)
         throw new Error('No image generated for guessing phase');
 
@@ -448,9 +454,17 @@ export class GameService {
   ): Promise<void> {
     try {
       const gameState = await this.getGameState(lobbyCode);
+
       if (!gameState) throw new Error('Game not found');
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
+      console.log('Processing guess submission:', {
+        lobbyCode,
+        playerId,
+        currentGuessCount: currentRound.guesses.length,
+        expectedGuessCount: currentRound.expectedGuessCount,
+        roundStatus: currentRound.status
+      });
       if (currentRound.status !== 'guessing')
         throw new Error('Not in guessing phase');
 
@@ -469,6 +483,12 @@ export class GameService {
       });
 
       await this.updateGameState(gameState);
+      console.log('After adding guess:', {
+        newGuessCount: currentRound.guesses.length,
+        expectedGuessCount: currentRound.expectedGuessCount,
+        willStartScoring:
+          currentRound.guesses.length >= currentRound.expectedGuessCount
+      });
 
       this.io.to(`lobby:${lobbyCode}`).emit('game:guess_submitted', playerId);
 
@@ -476,6 +496,14 @@ export class GameService {
       const expectedGuessCount = connectedPlayers - 1;
 
       if (currentRound.guesses.length >= expectedGuessCount) {
+        // Emit immediately when we know we have all guesses
+        this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
+
+        // Update status right away
+        currentRound.status = 'scoring';
+        await this.updateGameState(gameState);
+
+        // Clear timer and start scoring phase
         this.clearActiveTimer(lobbyCode);
         await this.startScoringPhase(lobbyCode);
       }
@@ -500,30 +528,49 @@ export class GameService {
   // ==================== Scoring Phase ====================
 
   private async startScoringPhase(lobbyCode: string): Promise<void> {
+    this.clearActiveTimer(lobbyCode);
+
     try {
+      console.log('Attempting to start scoring phase:', { lobbyCode });
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
-      currentRound.status = 'scoring';
-      await this.updateGameState(gameState);
+      console.log('Starting scoring phase with:', {
+        guessCount: currentRound.guesses.length,
+        expectedGuessCount: currentRound.expectedGuessCount,
+        roundStatus: currentRound.status
+      });
 
-      this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
+      // Set a timeout for scoring phase (20 seconds)
+      const scoringTimeout = setTimeout(() => {
+        console.log('Scoring phase timed out:', { lobbyCode });
+        this.handleScoringTimeout(lobbyCode);
+      }, 20000);
+
+      this.activeGameTimers.set(lobbyCode, scoringTimeout);
 
       const guessTexts = currentRound.guesses.map((g) => g.guess);
 
       if (guessTexts.length === 0) {
+        this.clearActiveTimer(lobbyCode);
         await this.startResultsPhase(lobbyCode);
         return;
       }
 
       try {
+        // Score the guesses
         const scores = await this.scoreGuesses(currentRound.prompt, guessTexts);
 
+        // Clear timeout since scoring completed successfully
+        this.clearActiveTimer(lobbyCode);
+
+        // Update scores in the round
         currentRound.guesses.forEach((guess, index) => {
           guess.score = scores[index];
         });
 
+        // Update player total scores
         currentRound.guesses.forEach((guess) => {
           const playerScore = gameState.scores.find(
             (s) => s.playerId === guess.playerId
@@ -534,14 +581,53 @@ export class GameService {
         });
 
         await this.updateGameState(gameState);
-
         await this.startResultsPhase(lobbyCode);
       } catch (error) {
         console.error('Error scoring guesses:', error);
+        // Clear timeout and move to results even if scoring fails
+        this.clearActiveTimer(lobbyCode);
         await this.startResultsPhase(lobbyCode);
       }
     } catch (error) {
       console.error('Error starting scoring phase:', error);
+      this.clearActiveTimer(lobbyCode);
+      await this.startNewRound(lobbyCode);
+    }
+  }
+
+  private async handleScoringTimeout(lobbyCode: string): Promise<void> {
+    try {
+      console.log('Handling scoring timeout for lobby:', lobbyCode);
+      const gameState = await this.getGameState(lobbyCode);
+      if (!gameState) throw new Error('Game not found');
+
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+      if (currentRound.status !== 'scoring') {
+        console.log('Round is no longer in scoring phase, ignoring timeout');
+        return;
+      }
+
+      // Assign random scores if scoring timed out
+      currentRound.guesses.forEach((guess) => {
+        if (guess.score === undefined) {
+          guess.score = Math.floor(Math.random() * 101);
+        }
+      });
+
+      // Update player total scores
+      currentRound.guesses.forEach((guess) => {
+        const playerScore = gameState.scores.find(
+          (s) => s.playerId === guess.playerId
+        );
+        if (playerScore && guess.score !== undefined) {
+          playerScore.totalScore += guess.score;
+        }
+      });
+
+      await this.updateGameState(gameState);
+      await this.startResultsPhase(lobbyCode);
+    } catch (error) {
+      console.error('Error handling scoring timeout:', error);
       await this.startNewRound(lobbyCode);
     }
   }
@@ -550,6 +636,7 @@ export class GameService {
     originalPrompt: string,
     guesses: string[]
   ): Promise<number[]> {
+    console.log('in scoreGuesses method');
     try {
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY
@@ -583,6 +670,7 @@ export class GameService {
       });
 
       const content = response.choices[0]?.message?.content;
+      console.log('OPENAI RESPONSE: ' + { content });
       if (!content) throw new Error('No response from OpenAI');
 
       const match = content.match(/\[(.*?)\]/);
