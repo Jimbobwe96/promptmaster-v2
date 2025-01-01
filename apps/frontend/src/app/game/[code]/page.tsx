@@ -10,8 +10,10 @@ import type {
 } from '@promptmaster/shared';
 import { PromptingPhase } from './components/PromptingPhase/PromptingPhase';
 import { type PromptInputHandle } from './components/PromptingPhase/PromptInput';
+import { GeneratingPhase } from './components/PromptingPhase/GeneratingPhase';
 import { GuessingPhase } from './components/GuessingPhase/GuessingPhase';
 import { type GuessInputHandle } from './components/GuessingPhase/GuessInput';
+import { ScoringPhase } from './components/GuessingPhase/ScoringPhase';
 
 interface GamePageProps {
   params: Promise<{
@@ -334,6 +336,9 @@ export default function GamePage({ params }: GamePageProps) {
     return null;
   }
 
+  console.log('CURRENT ROUND STATUS FOR CONDITIONAL RENDER:\n');
+  console.log(currentRound.status);
+
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
@@ -360,6 +365,8 @@ export default function GamePage({ params }: GamePageProps) {
           />
         )}
 
+        {currentRound.status === 'generating' && <GeneratingPhase />}
+
         {currentRound.status === 'guessing' && (
           <GuessingPhase
             round={currentRound}
@@ -368,6 +375,8 @@ export default function GamePage({ params }: GamePageProps) {
             ref={guessInputRef}
           />
         )}
+
+        {currentRound.status === 'scoring' && <ScoringPhase />}
 
         <div className="mt-8">{/* TODO: Add PlayerScores component */}</div>
       </div>

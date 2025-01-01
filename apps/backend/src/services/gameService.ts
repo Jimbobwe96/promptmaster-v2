@@ -496,7 +496,9 @@ export class GameService {
       const expectedGuessCount = connectedPlayers - 1;
 
       if (currentRound.guesses.length >= expectedGuessCount) {
+        console.log('EMITTING SCORING STARTED EVENT TO ALL IN LOBBY!!');
         // Emit immediately when we know we have all guesses
+        currentRound.status = 'scoring';
         this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
 
         // Update status right away
@@ -506,6 +508,10 @@ export class GameService {
         // Clear timer and start scoring phase
         this.clearActiveTimer(lobbyCode);
         await this.startScoringPhase(lobbyCode);
+      } else {
+        console.log(
+          'NOT ENOUGH GUESSES IN, DID NOT EMIT SCORING STARTED FROM HANDLE GUESS SUBMISSION'
+        );
       }
     } catch (error) {
       console.error('Error handling guess submission:', error);
@@ -515,15 +521,42 @@ export class GameService {
 
   private async handleGuessTimeout(lobbyCode: string): Promise<void> {
     try {
+      console.log(`Handling guess timeout for lobby ${lobbyCode}`);
+
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
 
-      await this.startScoringPhase(lobbyCode);
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+      // Only proceed if we're still in guessing phase
+      if (currentRound.status === 'guessing') {
+        // First, emit the scoring started event
+        this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
+
+        // Update the round status
+        currentRound.status = 'scoring';
+        await this.updateGameState(gameState);
+
+        // Then proceed with scoring phase
+        await this.startScoringPhase(lobbyCode);
+      }
     } catch (error) {
       console.error('Error handling guess timeout:', error);
       await this.startNewRound(lobbyCode);
     }
   }
+
+  // private async handleGuessTimeout(lobbyCode: string): Promise<void> {
+  //   try {
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     await this.startScoringPhase(lobbyCode);
+  //   } catch (error) {
+  //     console.error('Error handling guess timeout:', error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   // ==================== Scoring Phase ====================
 
