@@ -82,14 +82,18 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
+        // triggers generating phase
         socket?.on('game:prompt_submitted', (prompterId) => {
-          console.log('Received game:prompt_submitted event', {
-            prompterId,
-            mounted,
-            hasGameState: !!gameState,
-            currentRoundStatus:
-              gameState?.rounds[gameState.rounds.length - 1]?.status
-          });
+          console.log(
+            '\n\n\nRECEIVED GAME PROMPT SUBMITTED EVENT ON FRONTEND\n\n\n'
+          );
+          // console.log('Received game:prompt_submitted event', {
+          //   prompterId,
+          //   mounted,
+          //   hasGameState: !!gameState,
+          //   currentRoundStatus:
+          //     gameState?.rounds[gameState.rounds.length - 1]?.status
+          // });
 
           if (!mounted || !gameState) return;
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
@@ -204,8 +208,19 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
+        // SHOULD trigger scoring phase
+        // think of this as 'game:all_guesses_submitted'
         socket?.on('game:scoring_started', () => {
-          if (!mounted) return;
+          console.log(
+            '\n\n\nRECEIVED GAME SCORING STARTED EVENT ON FRONTEND\n\n\n'
+          );
+          if (!mounted || !gameState) return;
+
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+          if (currentRound) {
+            currentRound.status = 'scoring';
+            setGameState({ ...gameState });
+          }
 
           setGameState((prevState) => {
             if (!prevState) {
@@ -336,8 +351,10 @@ export default function GamePage({ params }: GamePageProps) {
     return null;
   }
 
-  console.log('CURRENT ROUND STATUS FOR CONDITIONAL RENDER:\n');
-  console.log(currentRound.status);
+  console.log(
+    'CURRENT ROUND STATUS FOR CONDITIONAL RENDER:' + currentRound.status + '\n'
+  );
+  // console.log(currentRound.status);
 
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">

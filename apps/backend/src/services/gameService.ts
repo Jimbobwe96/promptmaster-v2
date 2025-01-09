@@ -498,7 +498,11 @@ export class GameService {
       if (currentRound.guesses.length >= expectedGuessCount) {
         console.log('EMITTING SCORING STARTED EVENT TO ALL IN LOBBY!!');
         // Emit immediately when we know we have all guesses
+
+        // EXPERIMENTAL NEXT 2 LINES:
         currentRound.status = 'scoring';
+        await this.updateGameState(gameState);
+
         this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
 
         // Update status right away
