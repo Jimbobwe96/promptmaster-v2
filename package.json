@@ -7,7 +7,6 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:shared\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:lan": "concurrently \"npm run dev:shared\" \"npm run dev:backend\" \"cd apps/frontend && npm run dev:lan\"",
     "dev:shared": "cd packages/shared && npm run dev",
     "dev:backend": "cd apps/backend && npm run dev",
     "dev:frontend": "cd apps/frontend && npm run dev",
