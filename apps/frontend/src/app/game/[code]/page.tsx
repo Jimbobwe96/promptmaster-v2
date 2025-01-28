@@ -208,18 +208,12 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
-        // SHOULD trigger scoring phase
-        // think of this as 'game:all_guesses_submitted'
         socket?.on('game:scoring_started', () => {
-          console.log(
-            '\n\n\nRECEIVED GAME SCORING STARTED EVENT ON FRONTEND\n\n\n'
-          );
-          if (!mounted || !gameState) return;
+          console.log('Received game:scoring_started event');
 
-          const currentRound = gameState.rounds[gameState.rounds.length - 1];
-          if (currentRound) {
-            currentRound.status = 'scoring';
-            setGameState({ ...gameState });
+          if (!mounted || !gameState) {
+            console.log('Component not mounted or no game state available');
+            return;
           }
 
           setGameState((prevState) => {
@@ -230,19 +224,19 @@ export default function GamePage({ params }: GamePageProps) {
               return null;
             }
 
-            const updatedRounds = prevState.rounds.map((round, index) => {
-              if (index === prevState.rounds.length - 1) {
-                return {
-                  ...round,
-                  status: 'scoring' as const
-                };
-              }
-              return round;
-            });
-
+            // Create new state immutably
             return {
               ...prevState,
-              rounds: updatedRounds
+              rounds: prevState.rounds.map((round, index) => {
+                if (index === prevState.rounds.length - 1) {
+                  // Update only the last round
+                  return {
+                    ...round,
+                    status: 'scoring'
+                  };
+                }
+                return round;
+              })
             };
           });
         });
