@@ -538,8 +538,6 @@ export class GameService {
       if (!gameState) throw new Error('Game not found');
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
-
-      // Strong guard to ensure we're in the right phase
       if (currentRound.status !== 'guessing') {
         console.log(
           `[${lobbyCode}] Ignoring guess timeout - round is in ${currentRound.status} phase`
@@ -547,23 +545,125 @@ export class GameService {
         return;
       }
 
-      // First emit the event
-      this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
+      // Get connected players who haven't submitted a guess yet
+      const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+      if (!lobbyData) throw new Error('Lobby not found');
+      const lobby: Lobby = JSON.parse(lobbyData);
 
-      // Update the round status
+      const pendingGuessers = lobby.players.filter(
+        (player) =>
+          player.connected &&
+          player.id !== currentRound.prompterId &&
+          !currentRound.guesses.some((g) => g.playerId === player.id)
+      );
+
+      console.log(
+        `[${lobbyCode}] Requesting drafts from ${pendingGuessers.length} players`
+      );
+
+      // Request and collect drafts from all pending guessers
+      const draftPromises = pendingGuessers.map((player) => {
+        return new Promise<{ playerId: string; guess: string | null }>(
+          (resolve) => {
+            const cleanupFunctions: Array<() => void> = [];
+
+            // Set up draft handler
+            const draftHandler = (draft: string) => {
+              resolve({ playerId: player.id, guess: draft.trim() });
+            };
+
+            const socket = this.io.sockets.sockets.get(player.id);
+            if (socket) {
+              socket.once('game:submit_guess_draft', draftHandler);
+              cleanupFunctions.push(() => {
+                socket.removeListener('game:submit_guess_draft', draftHandler);
+              });
+
+              // Request the draft
+              socket.emit('game:request_guess_draft');
+            }
+
+            // Set timeout for each draft request
+            const timer = setTimeout(() => {
+              resolve({ playerId: player.id, guess: null });
+            }, 1000);
+
+            cleanupFunctions.push(() => clearTimeout(timer));
+
+            // Clean up when promise resolves
+            Promise.resolve().finally(() => {
+              cleanupFunctions.forEach((cleanup) => cleanup());
+            });
+          }
+        );
+      });
+
+      // Wait for all drafts (or timeouts)
+      const drafts = await Promise.all(draftPromises);
+
+      // Process valid drafts
+      for (const { playerId, guess } of drafts) {
+        if (guess) {
+          currentRound.guesses.push({
+            playerId,
+            guess,
+            submittedAt: new Date()
+          });
+        }
+      }
+
+      // Update game state with any collected drafts
+      await this.updateGameState(gameState);
+
+      // Proceed to scoring phase
       currentRound.status = 'scoring';
       await this.updateGameState(gameState);
 
-      // Clear timer before moving to scoring
-      this.clearActiveTimer(lobbyCode);
+      this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
 
-      // Then proceed with scoring phase
+      // Clear timer and start scoring
+      this.clearActiveTimer(lobbyCode);
       await this.startScoringPhase(lobbyCode);
     } catch (error) {
       console.error(`[${lobbyCode}] Error handling guess timeout:`, error);
       await this.startNewRound(lobbyCode);
     }
   }
+
+  // private async handleGuessTimeout(lobbyCode: string): Promise<void> {
+  //   try {
+  //     console.log(`[${lobbyCode}] Handling guess timeout`);
+
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+  //     // Strong guard to ensure we're in the right phase
+  //     if (currentRound.status !== 'guessing') {
+  //       console.log(
+  //         `[${lobbyCode}] Ignoring guess timeout - round is in ${currentRound.status} phase`
+  //       );
+  //       return;
+  //     }
+
+  //     // First emit the event
+  //     this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
+
+  //     // Update the round status
+  //     currentRound.status = 'scoring';
+  //     await this.updateGameState(gameState);
+
+  //     // Clear timer before moving to scoring
+  //     this.clearActiveTimer(lobbyCode);
+
+  //     // Then proceed with scoring phase
+  //     await this.startScoringPhase(lobbyCode);
+  //   } catch (error) {
+  //     console.error(`[${lobbyCode}] Error handling guess timeout:`, error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   // ==================== Scoring Phase ====================
 
