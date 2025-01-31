@@ -38,6 +38,29 @@ export interface GameRound {
   status: RoundStatus;
 }
 
+interface RoundResults {
+  roundNumber: number; // Current round number
+  imageUrl: string; // AI generated image
+  prompterId: string; // ID of prompter
+  originalPrompt: string; // The prompt used
+  guesses: {
+    playerId: string;
+    guess: string;
+    submittedAt: Date;
+    score: number; // Made non-optional since this is results
+  }[];
+  roundScores: {
+    // Added to separate round from total
+    playerId: string;
+    score: number;
+  }[];
+  totalScores: {
+    playerId: string;
+    totalScore: number;
+  }[];
+  isLastRound: boolean; // Added to handle final round differently
+}
+
 export interface GameState {
   lobbyCode: string;
   rounds: GameRound[];
@@ -76,19 +99,7 @@ export interface ServerToClientEvents {
   'game:round_ended': (roundResults: GameRound) => void;
   'game:ended': (finalScores: GameState) => void;
   'game:scoring_started': (data: { endTime: number }) => void;
-  'game:results': (data: {
-    originalPrompt: string;
-    guesses: {
-      playerId: string;
-      guess: string;
-      submittedAt: Date;
-      score?: number;
-    }[];
-    scores: {
-      playerId: string;
-      totalScore: number;
-    }[];
-  }) => void;
+  'game:results': (data: RoundResults) => void;
 }
 
 export interface ClientToServerEvents {

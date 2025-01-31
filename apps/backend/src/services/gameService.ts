@@ -630,47 +630,11 @@ export class GameService {
     }
   }
 
-  // private async handleGuessTimeout(lobbyCode: string): Promise<void> {
-  //   try {
-  //     console.log(`[${lobbyCode}] Handling guess timeout`);
-
-  //     const gameState = await this.getGameState(lobbyCode);
-  //     if (!gameState) throw new Error('Game not found');
-
-  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
-
-  //     // Strong guard to ensure we're in the right phase
-  //     if (currentRound.status !== 'guessing') {
-  //       console.log(
-  //         `[${lobbyCode}] Ignoring guess timeout - round is in ${currentRound.status} phase`
-  //       );
-  //       return;
-  //     }
-
-  //     // First emit the event
-  //     this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
-
-  //     // Update the round status
-  //     currentRound.status = 'scoring';
-  //     await this.updateGameState(gameState);
-
-  //     // Clear timer before moving to scoring
-  //     this.clearActiveTimer(lobbyCode);
-
-  //     // Then proceed with scoring phase
-  //     await this.startScoringPhase(lobbyCode);
-  //   } catch (error) {
-  //     console.error(`[${lobbyCode}] Error handling guess timeout:`, error);
-  //     await this.startNewRound(lobbyCode);
-  //   }
-  // }
-
   // ==================== Scoring Phase ====================
 
   private async startScoringPhase(lobbyCode: string): Promise<void> {
     console.log(`[${lobbyCode}] Starting scoring phase`);
 
-    // Already cleared timer in handleGuessSubmission
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
@@ -685,13 +649,111 @@ export class GameService {
         return;
       }
 
-      // Score guesses and move to results...
-      // Rest of the scoring logic
+      // Extract guesses for scoring
+      const guessTexts = currentRound.guesses.map((g) => g.guess);
+
+      // Score guesses using OpenAI
+      console.log(`[${lobbyCode}] Scoring ${guessTexts.length} guesses...`);
+      const scores = await this.scoreGuesses(currentRound.prompt, guessTexts);
+
+      // Update guess scores in the round
+      currentRound.guesses.forEach((guess, index) => {
+        guess.score = scores[index];
+      });
+
+      // Update total scores for each player
+      currentRound.guesses.forEach((guess) => {
+        const playerScore = gameState.scores.find(
+          (s) => s.playerId === guess.playerId
+        );
+        if (playerScore && guess.score !== undefined) {
+          playerScore.totalScore += guess.score;
+        }
+      });
+
+      // Save updated game state
+      await this.updateGameState(gameState);
+
+      // Set a timeout for scoring phase (3 seconds should be enough for animation)
+      const timer = setTimeout(() => this.startResultsPhase(lobbyCode), 3000);
+      this.setActiveTimer(lobbyCode, timer, 'scoring');
+
+      console.log(
+        `[${lobbyCode}] Scoring complete, transitioning to results soon...`
+      );
     } catch (error) {
       console.error(`[${lobbyCode}] Error in scoring phase:`, error);
+
+      // If we encounter an error, try to recover by:
+      // 1. Assign random scores as fallback
+      try {
+        const gameState = await this.getGameState(lobbyCode);
+        if (gameState) {
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+          // Assign random scores
+          currentRound.guesses.forEach((guess) => {
+            guess.score = Math.floor(Math.random() * 101);
+          });
+
+          // Update total scores
+          currentRound.guesses.forEach((guess) => {
+            const playerScore = gameState.scores.find(
+              (s) => s.playerId === guess.playerId
+            );
+            if (playerScore && guess.score !== undefined) {
+              playerScore.totalScore += guess.score;
+            }
+          });
+
+          await this.updateGameState(gameState);
+
+          // Still try to transition to results
+          const timer = setTimeout(
+            () => this.startResultsPhase(lobbyCode),
+            3000
+          );
+          this.setActiveTimer(lobbyCode, timer, 'scoring');
+
+          return;
+        }
+      } catch (recoveryError) {
+        console.error(
+          `[${lobbyCode}] Failed to recover from scoring error:`,
+          recoveryError
+        );
+      }
+
+      // If all else fails, start a new round
       await this.startNewRound(lobbyCode);
     }
   }
+
+  // private async startScoringPhase(lobbyCode: string): Promise<void> {
+  //   console.log(`[${lobbyCode}] Starting scoring phase`);
+
+  //   // Already cleared timer in handleGuessSubmission
+  //   try {
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+  //     // Defensive guard
+  //     if (currentRound.status !== 'scoring') {
+  //       console.error(
+  //         `[${lobbyCode}] Invalid phase transition to scoring. Current status: ${currentRound.status}`
+  //       );
+  //       return;
+  //     }
+
+  //     // Score guesses and move to results...
+  //     // Rest of the scoring logic
+  //   } catch (error) {
+  //     console.error(`[${lobbyCode}] Error in scoring phase:`, error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   private async handleScoringTimeout(lobbyCode: string): Promise<void> {
     try {
@@ -768,7 +830,7 @@ export class GameService {
       });
 
       const content = response.choices[0]?.message?.content;
-      console.log('OPENAI RESPONSE: ' + { content });
+      console.log('OPENAI RESPONSE: ' + content);
       if (!content) throw new Error('No response from OpenAI');
 
       const match = content.match(/\[(.*?)\]/);
@@ -794,6 +856,7 @@ export class GameService {
   // ==================== Results & Game End ====================
 
   private async startResultsPhase(lobbyCode: string): Promise<void> {
+    console.log('called startResultsPhase');
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
