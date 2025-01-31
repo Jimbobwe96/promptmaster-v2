@@ -38,7 +38,7 @@ export interface GameRound {
   status: RoundStatus;
 }
 
-interface RoundResults {
+export interface RoundResults {
   roundNumber: number; // Current round number
   imageUrl: string; // AI generated image
   prompterId: string; // ID of prompter

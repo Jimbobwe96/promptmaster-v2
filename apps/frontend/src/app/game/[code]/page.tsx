@@ -14,6 +14,7 @@ import { GeneratingPhase } from './components/PromptingPhase/GeneratingPhase';
 import { GuessingPhase } from './components/GuessingPhase/GuessingPhase';
 import { type GuessInputHandle } from './components/GuessingPhase/GuessInput';
 import { ScoringPhase } from './components/GuessingPhase/ScoringPhase';
+import { ResultsPhase } from './components/ResultsPhase/ResultsPhase';
 
 interface GamePageProps {
   params: Promise<{
@@ -241,6 +242,43 @@ export default function GamePage({ params }: GamePageProps) {
           });
         });
 
+        socket?.on('game:results', (results) => {
+          console.log('Received game results:', results);
+          console.log('Current gameState:', gameState);
+          if (!mounted || !gameState) return;
+
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+          console.log('Current round:', currentRound);
+          if (currentRound) {
+            // Update the round with results data
+            currentRound.status = 'results';
+            currentRound.guesses = results.guesses;
+
+            // Update game state scores
+            gameState.scores = results.totalScores; // Make sure this is happening
+            console.log('Updated gameState:', gameState);
+
+            setGameState({ ...gameState });
+          }
+        });
+
+        // socket?.on('game:results', (results) => {
+        //   console.log('Received game results:', results);
+        //   if (!mounted || !gameState) return;
+
+        //   const currentRound = gameState.rounds[gameState.rounds.length - 1];
+        //   if (currentRound) {
+        //     // Update the round with results data
+        //     currentRound.status = 'results';
+        //     currentRound.guesses = results.guesses;
+
+        //     // Update game state scores
+        //     gameState.scores = results.totalScores;
+
+        //     setGameState({ ...gameState });
+        //   }
+        // });
+
         setIsLoading(false);
         setConnectionError(null);
       } catch (err) {
@@ -389,7 +427,65 @@ export default function GamePage({ params }: GamePageProps) {
 
         {currentRound.status === 'scoring' && <ScoringPhase />}
 
-        <div className="mt-8">{/* TODO: Add PlayerScores component */}</div>
+        {currentRound.status === 'results' && gameState.scores && (
+          <ResultsPhase
+            results={{
+              roundNumber: gameState.rounds.length,
+              imageUrl: currentRound.imageUrl!,
+              prompterId: currentRound.prompterId,
+              originalPrompt: currentRound.prompt,
+              guesses: currentRound.guesses.map((guess) => ({
+                ...guess,
+                score: guess.score ?? 0
+              })),
+              roundScores: gameState.scores.map((score) => ({
+                playerId: score.playerId,
+                score:
+                  currentRound.guesses.find(
+                    (g) => g.playerId === score.playerId
+                  )?.score ?? 0
+              })),
+              totalScores: gameState.scores,
+              isLastRound:
+                gameState.rounds.length === gameState.prompterOrder.length
+            }}
+            players={players}
+            onNextRound={() => {
+              console.log('Ready for next round');
+            }}
+          />
+        )}
+
+        {/* {currentRound.status === 'results' && (
+          <ResultsPhase
+            results={{
+              roundNumber: gameState.rounds.length,
+              imageUrl: currentRound.imageUrl!,
+              prompterId: currentRound.prompterId,
+              originalPrompt: currentRound.prompt,
+              guesses: currentRound.guesses.map((guess) => ({
+                ...guess,
+                score: guess.score ?? 0 // Provide a default of 0 if score is undefined
+              })),
+              roundScores: gameState.scores.map((score) => ({
+                playerId: score.playerId,
+                score:
+                  currentRound.guesses.find(
+                    (g) => g.playerId === score.playerId
+                  )?.score ?? 0
+              })),
+              totalScores: gameState.scores,
+              isLastRound:
+                gameState.rounds.length === gameState.prompterOrder.length
+            }}
+            players={players}
+            onNextRound={() => {
+              // The backend will handle starting the next round
+              // This is just for UI feedback
+              console.log('Ready for next round');
+            }}
+          />
+        )} */}
       </div>
     </main>
   );
