@@ -127,7 +127,8 @@ export class GameService {
         guesses: [],
         status: 'prompting',
         endTime: endTime,
-        expectedGuessCount: connectedPlayers.length - 1
+        expectedGuessCount: connectedPlayers.length - 1,
+        readyPlayers: []
       };
 
       gameState.rounds.push(firstRound);
@@ -179,7 +180,9 @@ export class GameService {
       prompt: '',
       guesses: [],
       status: 'prompting',
-      expectedGuessCount: connectedPlayers.length - 1
+      expectedGuessCount: connectedPlayers.length - 1,
+      readyPlayers: [],
+      readyPhaseEndTime: undefined
     };
 
     gameState.rounds.push(newRound);
@@ -829,33 +832,145 @@ export class GameService {
 
   // ==================== Results & Game End ====================
 
+  // private async startResultsPhase(lobbyCode: string): Promise<void> {
+  //   try {
+  //     const RESULTS_DISPLAY_TIME = 15000; // 15 seconds
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+  //     currentRound.status = 'results';
+  //     await this.updateGameState(gameState);
+
+  //     // Emit results with nextRoundTime
+  //     const nextRoundTime = Date.now() + RESULTS_DISPLAY_TIME;
+  //     this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
+  //       originalPrompt: currentRound.prompt,
+  //       guesses: currentRound.guesses,
+  //       scores: gameState.scores,
+  //       nextRoundTime // Add this to the payload
+  //     });
+
+  //     const gameComplete = await this.isGameComplete(gameState);
+  //     if (gameComplete) {
+  //       setTimeout(() => this.endGame(lobbyCode), RESULTS_DISPLAY_TIME);
+  //     } else {
+  //       setTimeout(() => this.startNewRound(lobbyCode), RESULTS_DISPLAY_TIME);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error starting results phase:', error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
+
   private async startResultsPhase(lobbyCode: string): Promise<void> {
     try {
-      const RESULTS_DISPLAY_TIME = 15000; // 15 seconds
+      const RESULTS_DISPLAY_TIME = 20000; // 20 seconds for ready phase
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
       currentRound.status = 'results';
+
+      // Initialize ready state
+      currentRound.readyPlayers = [];
+      currentRound.readyPhaseEndTime = Date.now() + RESULTS_DISPLAY_TIME;
+
       await this.updateGameState(gameState);
 
-      // Emit results with nextRoundTime
-      const nextRoundTime = Date.now() + RESULTS_DISPLAY_TIME;
+      // Emit results with readiness info
       this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
         originalPrompt: currentRound.prompt,
         guesses: currentRound.guesses,
         scores: gameState.scores,
-        nextRoundTime // Add this to the payload
+        nextRoundTime: currentRound.readyPhaseEndTime
       });
 
-      const gameComplete = await this.isGameComplete(gameState);
-      if (gameComplete) {
-        setTimeout(() => this.endGame(lobbyCode), RESULTS_DISPLAY_TIME);
-      } else {
-        setTimeout(() => this.startNewRound(lobbyCode), RESULTS_DISPLAY_TIME);
-      }
+      // Broadcast initial ready state
+      await this.broadcastReadyState(lobbyCode);
+
+      // Set timeout for ready phase
+      const timer = setTimeout(
+        () => this.handleReadyPhaseTimeout(lobbyCode),
+        RESULTS_DISPLAY_TIME
+      );
+      this.setActiveTimer(lobbyCode, timer, 'ready');
     } catch (error) {
       console.error('Error starting results phase:', error);
+      await this.startNewRound(lobbyCode);
+    }
+  }
+
+  private async broadcastReadyState(lobbyCode: string): Promise<void> {
+    const gameState = await this.getGameState(lobbyCode);
+    if (!gameState) return;
+
+    const currentRound = gameState.rounds[gameState.rounds.length - 1];
+    const connectedPlayers = await this.getConnectedPlayerCount(lobbyCode);
+
+    this.io.to(`lobby:${lobbyCode}`).emit('game:ready_state_update', {
+      readyPlayers: currentRound.readyPlayers,
+      readyPhaseEndTime: currentRound.readyPhaseEndTime!,
+      totalPlayers: connectedPlayers
+    });
+  }
+
+  async handlePlayerReady(lobbyCode: string, playerId: string): Promise<void> {
+    try {
+      const gameState = await this.getGameState(lobbyCode);
+      if (!gameState) throw new Error('Game not found');
+
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+      // Only allow marking ready during results phase
+      if (currentRound.status !== 'results') return;
+
+      // Don't allow duplicate ready markers
+      if (currentRound.readyPlayers.includes(playerId)) return;
+
+      // Add player to ready list
+      currentRound.readyPlayers.push(playerId);
+      await this.updateGameState(gameState);
+
+      // Broadcast updated ready state
+      await this.broadcastReadyState(lobbyCode);
+
+      // Check if all players are ready
+      const connectedPlayers = await this.getConnectedPlayerCount(lobbyCode);
+      if (currentRound.readyPlayers.length >= connectedPlayers) {
+        // Clear the timeout since everyone is ready
+        this.clearActiveTimer(lobbyCode);
+
+        // Start new round or end game
+        const gameComplete = await this.isGameComplete(gameState);
+        if (gameComplete) {
+          await this.endGame(lobbyCode);
+        } else {
+          await this.startNewRound(lobbyCode);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling player ready:', error);
+    }
+  }
+
+  private async handleReadyPhaseTimeout(lobbyCode: string): Promise<void> {
+    try {
+      const gameState = await this.getGameState(lobbyCode);
+      if (!gameState) throw new Error('Game not found');
+
+      const currentRound = gameState.rounds[gameState.rounds.length - 1];
+      if (currentRound.status !== 'results') return;
+
+      // Time's up - start new round or end game regardless of ready state
+      const gameComplete = await this.isGameComplete(gameState);
+      if (gameComplete) {
+        await this.endGame(lobbyCode);
+      } else {
+        await this.startNewRound(lobbyCode);
+      }
+    } catch (error) {
+      console.error('Error handling ready phase timeout:', error);
       await this.startNewRound(lobbyCode);
     }
   }

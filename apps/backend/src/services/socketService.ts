@@ -479,6 +479,30 @@ export class SocketService {
         }
       });
 
+      socket.on('game:mark_ready', async () => {
+        try {
+          // Get lobby code for this socket
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Create game service instance
+          const gameService = new GameService(this.io);
+
+          // Handle the ready state
+          await gameService.handlePlayerReady(code, socket.id);
+        } catch (error) {
+          console.error('Error handling player ready:', error);
+          this.emitError(
+            socket,
+            'SERVER_ERROR',
+            'Failed to mark player as ready'
+          );
+        }
+      });
+
       socket.on('disconnect', async () => {
         try {
           console.log(`Client disconnected: ${socket.id}`);

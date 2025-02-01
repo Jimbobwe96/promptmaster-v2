@@ -246,11 +246,29 @@ export default function GamePage({ params }: GamePageProps) {
             currentRound.prompt = results.originalPrompt;
             currentRound.guesses = results.guesses;
             currentRound.nextRoundTime = results.nextRoundTime;
+            // Initialize ready state
+            currentRound.readyPlayers = [];
+            currentRound.readyPhaseEndTime = results.nextRoundTime;
 
-            // Update game state scores (fix the property name)
-            gameState.scores = results.scores; // Changed from results.totalScores
+            // Update game state scores
+            gameState.scores = results.scores;
 
-            console.log('Updated gameState:', gameState); // Debug log
+            console.log(
+              'Updated gameState with prompt and ready state:',
+              gameState
+            );
+            setGameState({ ...gameState });
+          }
+        });
+
+        socket?.on('game:ready_state_update', (data) => {
+          console.log('Received ready state update:', data);
+          if (!mounted || !gameState) return;
+
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+          if (currentRound) {
+            currentRound.readyPlayers = data.readyPlayers;
+            currentRound.readyPhaseEndTime = data.readyPhaseEndTime;
             setGameState({ ...gameState });
           }
         });
@@ -405,7 +423,7 @@ export default function GamePage({ params }: GamePageProps) {
 
         {currentRound.status === 'scoring' && <ScoringPhase />}
 
-        {currentRound.status === 'results' && gameState.scores && (
+        {/* {currentRound.status === 'results' && gameState.scores && (
           <ResultsPhase
             results={{
               roundNumber: gameState.rounds.length,
@@ -432,6 +450,35 @@ export default function GamePage({ params }: GamePageProps) {
             onNextRound={() => {
               console.log('Ready for next round');
             }}
+          />
+        )} */}
+
+        {currentRound.status === 'results' && gameState.scores && (
+          <ResultsPhase
+            results={{
+              roundNumber: gameState.rounds.length,
+              imageUrl: currentRound.imageUrl!,
+              prompterId: currentRound.prompterId,
+              originalPrompt: currentRound.prompt,
+              guesses: currentRound.guesses.map((guess) => ({
+                ...guess,
+                score: guess.score ?? 0
+              })),
+              roundScores: gameState.scores.map((score) => ({
+                playerId: score.playerId,
+                score:
+                  currentRound.guesses.find(
+                    (g) => g.playerId === score.playerId
+                  )?.score ?? 0
+              })),
+              scores: gameState.scores,
+              isLastRound:
+                gameState.rounds.length === gameState.prompterOrder.length,
+              nextRoundTime: currentRound.readyPhaseEndTime!,
+              readyPlayers: currentRound.readyPlayers,
+              readyPhaseEndTime: currentRound.readyPhaseEndTime!
+            }}
+            players={players}
           />
         )}
       </div>

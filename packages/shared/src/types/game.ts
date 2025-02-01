@@ -37,6 +37,8 @@ export interface GameRound {
   }[];
   status: RoundStatus;
   nextRoundTime?: number;
+  readyPlayers: string[];
+  readyPhaseEndTime?: number;
 }
 
 export interface RoundResults {
@@ -61,6 +63,8 @@ export interface RoundResults {
   }[];
   isLastRound: boolean; // Added to handle final round differently
   nextRoundTime: number;
+  readyPlayers: string[];
+  readyPhaseEndTime: number;
 }
 
 export interface GameState {
@@ -102,6 +106,12 @@ export interface ServerToClientEvents {
   'game:ended': (finalScores: GameState) => void;
   'game:scoring_started': (data: { endTime: number }) => void;
   'game:results': (data: RoundResults) => void;
+
+  'game:ready_state_update': (data: {
+    readyPlayers: string[];
+    readyPhaseEndTime: number;
+    totalPlayers: number;
+  }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -119,6 +129,8 @@ export interface ClientToServerEvents {
   'game:submit_draft': (draft: string) => void;
   'game:submit_guess': (guess: string) => void;
   'game:submit_guess_draft': (draft: string) => void;
+
+  'game:mark_ready': () => void;
 }
 
 export interface LobbySession {
