@@ -729,32 +729,6 @@ export class GameService {
     }
   }
 
-  // private async startScoringPhase(lobbyCode: string): Promise<void> {
-  //   console.log(`[${lobbyCode}] Starting scoring phase`);
-
-  //   // Already cleared timer in handleGuessSubmission
-  //   try {
-  //     const gameState = await this.getGameState(lobbyCode);
-  //     if (!gameState) throw new Error('Game not found');
-
-  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
-
-  //     // Defensive guard
-  //     if (currentRound.status !== 'scoring') {
-  //       console.error(
-  //         `[${lobbyCode}] Invalid phase transition to scoring. Current status: ${currentRound.status}`
-  //       );
-  //       return;
-  //     }
-
-  //     // Score guesses and move to results...
-  //     // Rest of the scoring logic
-  //   } catch (error) {
-  //     console.error(`[${lobbyCode}] Error in scoring phase:`, error);
-  //     await this.startNewRound(lobbyCode);
-  //   }
-  // }
-
   private async handleScoringTimeout(lobbyCode: string): Promise<void> {
     try {
       console.log('Handling scoring timeout for lobby:', lobbyCode);
@@ -885,34 +859,6 @@ export class GameService {
       await this.startNewRound(lobbyCode);
     }
   }
-
-  // private async startResultsPhase(lobbyCode: string): Promise<void> {
-  //   console.log('called startResultsPhase');
-  //   try {
-  //     const gameState = await this.getGameState(lobbyCode);
-  //     if (!gameState) throw new Error('Game not found');
-
-  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
-  //     currentRound.status = 'results';
-  //     await this.updateGameState(gameState);
-
-  //     this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
-  //       originalPrompt: currentRound.prompt,
-  //       guesses: currentRound.guesses,
-  //       scores: gameState.scores
-  //     });
-
-  //     const gameComplete = await this.isGameComplete(gameState);
-  //     if (gameComplete) {
-  //       setTimeout(() => this.endGame(lobbyCode), 5000);
-  //     } else {
-  //       setTimeout(() => this.startNewRound(lobbyCode), 5000);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error starting results phase:', error);
-  //     await this.startNewRound(lobbyCode);
-  //   }
-  // }
 
   async endGame(lobbyCode: string): Promise<void> {
     try {
