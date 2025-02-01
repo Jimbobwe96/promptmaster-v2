@@ -16,7 +16,7 @@ interface GuessesSectionProps {
 
 interface ScoresSectionProps {
   roundScores: RoundResults['roundScores'];
-  totalScores: RoundResults['totalScores'];
+  totalScores: RoundResults['scores'];
   players: LobbyPlayer[];
 }
 
@@ -166,7 +166,7 @@ export const ResultsPhase: React.FC<ResultsPhaseProps> = ({
 
       <ScoresSection
         roundScores={results.roundScores}
-        totalScores={results.totalScores}
+        totalScores={results.scores}
         players={players}
       />
 

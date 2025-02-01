@@ -36,6 +36,7 @@ export interface GameRound {
     score?: number; // 0-100
   }[];
   status: RoundStatus;
+  nextRoundTime?: number;
 }
 
 export interface RoundResults {
@@ -54,11 +55,12 @@ export interface RoundResults {
     playerId: string;
     score: number;
   }[];
-  totalScores: {
+  scores: {
     playerId: string;
     totalScore: number;
   }[];
   isLastRound: boolean; // Added to handle final round differently
+  nextRoundTime: number;
 }
 
 export interface GameState {

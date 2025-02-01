@@ -244,23 +244,66 @@ export default function GamePage({ params }: GamePageProps) {
 
         socket?.on('game:results', (results) => {
           console.log('Received game results:', results);
-          console.log('Current gameState:', gameState);
           if (!mounted || !gameState) return;
 
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
-          console.log('Current round:', currentRound);
           if (currentRound) {
             // Update the round with results data
             currentRound.status = 'results';
             currentRound.guesses = results.guesses;
+            currentRound.nextRoundTime = results.nextRoundTime;
 
-            // Update game state scores
-            gameState.scores = results.totalScores; // Make sure this is happening
-            console.log('Updated gameState:', gameState);
+            // Update game state scores (fix the property name)
+            gameState.scores = results.scores; // Changed from results.totalScores
 
+            console.log('Updated gameState:', gameState); // Debug log
             setGameState({ ...gameState });
           }
         });
+
+        // socket?.on('game:results', (results) => {
+        //   console.log('Received game results:', results);
+        //   if (!mounted || !gameState) return;
+
+        //   const currentRound = gameState.rounds[gameState.rounds.length - 1];
+        //   if (currentRound) {
+        //     // Update the round with results data
+        //     currentRound.status = 'results';
+        //     currentRound.guesses = results.guesses;
+        //     currentRound.nextRoundTime = results.nextRoundTime; // Store the next round time
+
+        //     // Update game state scores
+        //     gameState.scores = results.totalScores;
+
+        //     setGameState({ ...gameState });
+
+        //     // Log when next round will start
+        //     console.log(
+        //       'Next round will start at:',
+        //       new Date(results.nextRoundTime).toISOString()
+        //     );
+        //   }
+        // });
+
+        // socket?.on('game:results', (results) => {
+        //   console.log('Received game results:', results);
+        //   console.log('Current gameState:', gameState);
+        //   if (!mounted || !gameState) return;
+
+        //   const currentRound = gameState.rounds[gameState.rounds.length - 1];
+        //   console.log('Current round:', currentRound);
+        //   if (currentRound) {
+        //     // Update the round with results data
+        //     currentRound.status = 'results';
+        //     currentRound.guesses = results.guesses;
+
+        //     // Update game state scores
+        //     gameState.scores = results.totalScores; // Make sure this is happening
+        //     console.log('Updated gameState:', gameState);
+
+        //     setGameState({ ...gameState });
+        //   }
+        // });
 
         // socket?.on('game:results', (results) => {
         //   console.log('Received game results:', results);
@@ -427,6 +470,10 @@ export default function GamePage({ params }: GamePageProps) {
 
         {currentRound.status === 'scoring' && <ScoringPhase />}
 
+        {/* {currentRound.status === 'results' && gameState.scores && (
+          <ResultsPhase results={{}} />
+        )} */}
+
         {currentRound.status === 'results' && gameState.scores && (
           <ResultsPhase
             results={{
@@ -445,9 +492,10 @@ export default function GamePage({ params }: GamePageProps) {
                     (g) => g.playerId === score.playerId
                   )?.score ?? 0
               })),
-              totalScores: gameState.scores,
+              scores: gameState.scores,
               isLastRound:
-                gameState.rounds.length === gameState.prompterOrder.length
+                gameState.rounds.length === gameState.prompterOrder.length,
+              nextRoundTime: currentRound.nextRoundTime!
             }}
             players={players}
             onNextRound={() => {

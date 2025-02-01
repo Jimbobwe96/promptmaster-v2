@@ -856,8 +856,8 @@ export class GameService {
   // ==================== Results & Game End ====================
 
   private async startResultsPhase(lobbyCode: string): Promise<void> {
-    console.log('called startResultsPhase');
     try {
+      const RESULTS_DISPLAY_TIME = 15000; // 15 seconds
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
 
@@ -865,23 +865,54 @@ export class GameService {
       currentRound.status = 'results';
       await this.updateGameState(gameState);
 
+      // Emit results with nextRoundTime
+      const nextRoundTime = Date.now() + RESULTS_DISPLAY_TIME;
       this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
         originalPrompt: currentRound.prompt,
         guesses: currentRound.guesses,
-        scores: gameState.scores
+        scores: gameState.scores,
+        nextRoundTime // Add this to the payload
       });
 
       const gameComplete = await this.isGameComplete(gameState);
       if (gameComplete) {
-        setTimeout(() => this.endGame(lobbyCode), 5000);
+        setTimeout(() => this.endGame(lobbyCode), RESULTS_DISPLAY_TIME);
       } else {
-        setTimeout(() => this.startNewRound(lobbyCode), 5000);
+        setTimeout(() => this.startNewRound(lobbyCode), RESULTS_DISPLAY_TIME);
       }
     } catch (error) {
       console.error('Error starting results phase:', error);
       await this.startNewRound(lobbyCode);
     }
   }
+
+  // private async startResultsPhase(lobbyCode: string): Promise<void> {
+  //   console.log('called startResultsPhase');
+  //   try {
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+  //     currentRound.status = 'results';
+  //     await this.updateGameState(gameState);
+
+  //     this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
+  //       originalPrompt: currentRound.prompt,
+  //       guesses: currentRound.guesses,
+  //       scores: gameState.scores
+  //     });
+
+  //     const gameComplete = await this.isGameComplete(gameState);
+  //     if (gameComplete) {
+  //       setTimeout(() => this.endGame(lobbyCode), 5000);
+  //     } else {
+  //       setTimeout(() => this.startNewRound(lobbyCode), 5000);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error starting results phase:', error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   async endGame(lobbyCode: string): Promise<void> {
     try {
