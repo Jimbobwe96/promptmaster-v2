@@ -729,42 +729,42 @@ export class GameService {
     }
   }
 
-  private async handleScoringTimeout(lobbyCode: string): Promise<void> {
-    try {
-      console.log('Handling scoring timeout for lobby:', lobbyCode);
-      const gameState = await this.getGameState(lobbyCode);
-      if (!gameState) throw new Error('Game not found');
+  // private async handleScoringTimeout(lobbyCode: string): Promise<void> {
+  //   try {
+  //     console.log('Handling scoring timeout for lobby:', lobbyCode);
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
 
-      const currentRound = gameState.rounds[gameState.rounds.length - 1];
-      if (currentRound.status !== 'scoring') {
-        console.log('Round is no longer in scoring phase, ignoring timeout');
-        return;
-      }
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+  //     if (currentRound.status !== 'scoring') {
+  //       console.log('Round is no longer in scoring phase, ignoring timeout');
+  //       return;
+  //     }
 
-      // Assign random scores if scoring timed out
-      currentRound.guesses.forEach((guess) => {
-        if (guess.score === undefined) {
-          guess.score = Math.floor(Math.random() * 101);
-        }
-      });
+  //     // Assign random scores if scoring timed out
+  //     currentRound.guesses.forEach((guess) => {
+  //       if (guess.score === undefined) {
+  //         guess.score = Math.floor(Math.random() * 101);
+  //       }
+  //     });
 
-      // Update player total scores
-      currentRound.guesses.forEach((guess) => {
-        const playerScore = gameState.scores.find(
-          (s) => s.playerId === guess.playerId
-        );
-        if (playerScore && guess.score !== undefined) {
-          playerScore.totalScore += guess.score;
-        }
-      });
+  //     // Update player total scores
+  //     currentRound.guesses.forEach((guess) => {
+  //       const playerScore = gameState.scores.find(
+  //         (s) => s.playerId === guess.playerId
+  //       );
+  //       if (playerScore && guess.score !== undefined) {
+  //         playerScore.totalScore += guess.score;
+  //       }
+  //     });
 
-      await this.updateGameState(gameState);
-      await this.startResultsPhase(lobbyCode);
-    } catch (error) {
-      console.error('Error handling scoring timeout:', error);
-      await this.startNewRound(lobbyCode);
-    }
-  }
+  //     await this.updateGameState(gameState);
+  //     await this.startResultsPhase(lobbyCode);
+  //   } catch (error) {
+  //     console.error('Error handling scoring timeout:', error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   private async scoreGuesses(
     originalPrompt: string,
@@ -793,7 +793,7 @@ export class GameService {
   Respond with ONLY an array of numbers representing the scores, like: [85, 72, 45]`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'user',
