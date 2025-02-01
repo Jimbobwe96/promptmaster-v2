@@ -538,8 +538,6 @@ export class GameService {
       if (!gameState) throw new Error('Game not found');
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
-
-      // Strong guard to ensure we're in the right phase
       if (currentRound.status !== 'guessing') {
         console.log(
           `[${lobbyCode}] Ignoring guess timeout - round is in ${currentRound.status} phase`
@@ -547,17 +545,84 @@ export class GameService {
         return;
       }
 
-      // First emit the event
-      this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
+      // Get connected players who haven't submitted a guess yet
+      const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+      if (!lobbyData) throw new Error('Lobby not found');
+      const lobby: Lobby = JSON.parse(lobbyData);
 
-      // Update the round status
+      const pendingGuessers = lobby.players.filter(
+        (player) =>
+          player.connected &&
+          player.id !== currentRound.prompterId &&
+          !currentRound.guesses.some((g) => g.playerId === player.id)
+      );
+
+      console.log(
+        `[${lobbyCode}] Requesting drafts from ${pendingGuessers.length} players`
+      );
+
+      // Request and collect drafts from all pending guessers
+      const draftPromises = pendingGuessers.map((player) => {
+        return new Promise<{ playerId: string; guess: string | null }>(
+          (resolve) => {
+            const cleanupFunctions: Array<() => void> = [];
+
+            // Set up draft handler
+            const draftHandler = (draft: string) => {
+              resolve({ playerId: player.id, guess: draft.trim() });
+            };
+
+            const socket = this.io.sockets.sockets.get(player.id);
+            if (socket) {
+              socket.once('game:submit_guess_draft', draftHandler);
+              cleanupFunctions.push(() => {
+                socket.removeListener('game:submit_guess_draft', draftHandler);
+              });
+
+              // Request the draft
+              socket.emit('game:request_guess_draft');
+            }
+
+            // Set timeout for each draft request
+            const timer = setTimeout(() => {
+              resolve({ playerId: player.id, guess: null });
+            }, 1000);
+
+            cleanupFunctions.push(() => clearTimeout(timer));
+
+            // Clean up when promise resolves
+            Promise.resolve().finally(() => {
+              cleanupFunctions.forEach((cleanup) => cleanup());
+            });
+          }
+        );
+      });
+
+      // Wait for all drafts (or timeouts)
+      const drafts = await Promise.all(draftPromises);
+
+      // Process valid drafts
+      for (const { playerId, guess } of drafts) {
+        if (guess) {
+          currentRound.guesses.push({
+            playerId,
+            guess,
+            submittedAt: new Date()
+          });
+        }
+      }
+
+      // Update game state with any collected drafts
+      await this.updateGameState(gameState);
+
+      // Proceed to scoring phase
       currentRound.status = 'scoring';
       await this.updateGameState(gameState);
 
-      // Clear timer before moving to scoring
-      this.clearActiveTimer(lobbyCode);
+      this.io.to(`lobby:${lobbyCode}`).emit('game:scoring_started');
 
-      // Then proceed with scoring phase
+      // Clear timer and start scoring
+      this.clearActiveTimer(lobbyCode);
       await this.startScoringPhase(lobbyCode);
     } catch (error) {
       console.error(`[${lobbyCode}] Error handling guess timeout:`, error);
@@ -570,7 +635,6 @@ export class GameService {
   private async startScoringPhase(lobbyCode: string): Promise<void> {
     console.log(`[${lobbyCode}] Starting scoring phase`);
 
-    // Already cleared timer in handleGuessSubmission
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
@@ -585,34 +649,19 @@ export class GameService {
         return;
       }
 
-      // Score guesses and move to results...
-      // Rest of the scoring logic
-    } catch (error) {
-      console.error(`[${lobbyCode}] Error in scoring phase:`, error);
-      await this.startNewRound(lobbyCode);
-    }
-  }
+      // Extract guesses for scoring
+      const guessTexts = currentRound.guesses.map((g) => g.guess);
 
-  private async handleScoringTimeout(lobbyCode: string): Promise<void> {
-    try {
-      console.log('Handling scoring timeout for lobby:', lobbyCode);
-      const gameState = await this.getGameState(lobbyCode);
-      if (!gameState) throw new Error('Game not found');
+      // Score guesses using OpenAI
+      console.log(`[${lobbyCode}] Scoring ${guessTexts.length} guesses...`);
+      const scores = await this.scoreGuesses(currentRound.prompt, guessTexts);
 
-      const currentRound = gameState.rounds[gameState.rounds.length - 1];
-      if (currentRound.status !== 'scoring') {
-        console.log('Round is no longer in scoring phase, ignoring timeout');
-        return;
-      }
-
-      // Assign random scores if scoring timed out
-      currentRound.guesses.forEach((guess) => {
-        if (guess.score === undefined) {
-          guess.score = Math.floor(Math.random() * 101);
-        }
+      // Update guess scores in the round
+      currentRound.guesses.forEach((guess, index) => {
+        guess.score = scores[index];
       });
 
-      // Update player total scores
+      // Update total scores for each player
       currentRound.guesses.forEach((guess) => {
         const playerScore = gameState.scores.find(
           (s) => s.playerId === guess.playerId
@@ -622,13 +671,100 @@ export class GameService {
         }
       });
 
+      // Save updated game state
       await this.updateGameState(gameState);
-      await this.startResultsPhase(lobbyCode);
+
+      // Set a timeout for scoring phase (3 seconds should be enough for animation)
+      const timer = setTimeout(() => this.startResultsPhase(lobbyCode), 3000);
+      this.setActiveTimer(lobbyCode, timer, 'scoring');
+
+      console.log(
+        `[${lobbyCode}] Scoring complete, transitioning to results soon...`
+      );
     } catch (error) {
-      console.error('Error handling scoring timeout:', error);
+      console.error(`[${lobbyCode}] Error in scoring phase:`, error);
+
+      // If we encounter an error, try to recover by:
+      // 1. Assign random scores as fallback
+      try {
+        const gameState = await this.getGameState(lobbyCode);
+        if (gameState) {
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+
+          // Assign random scores
+          currentRound.guesses.forEach((guess) => {
+            guess.score = Math.floor(Math.random() * 101);
+          });
+
+          // Update total scores
+          currentRound.guesses.forEach((guess) => {
+            const playerScore = gameState.scores.find(
+              (s) => s.playerId === guess.playerId
+            );
+            if (playerScore && guess.score !== undefined) {
+              playerScore.totalScore += guess.score;
+            }
+          });
+
+          await this.updateGameState(gameState);
+
+          // Still try to transition to results
+          const timer = setTimeout(
+            () => this.startResultsPhase(lobbyCode),
+            3000
+          );
+          this.setActiveTimer(lobbyCode, timer, 'scoring');
+
+          return;
+        }
+      } catch (recoveryError) {
+        console.error(
+          `[${lobbyCode}] Failed to recover from scoring error:`,
+          recoveryError
+        );
+      }
+
+      // If all else fails, start a new round
       await this.startNewRound(lobbyCode);
     }
   }
+
+  // private async handleScoringTimeout(lobbyCode: string): Promise<void> {
+  //   try {
+  //     console.log('Handling scoring timeout for lobby:', lobbyCode);
+  //     const gameState = await this.getGameState(lobbyCode);
+  //     if (!gameState) throw new Error('Game not found');
+
+  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
+  //     if (currentRound.status !== 'scoring') {
+  //       console.log('Round is no longer in scoring phase, ignoring timeout');
+  //       return;
+  //     }
+
+  //     // Assign random scores if scoring timed out
+  //     currentRound.guesses.forEach((guess) => {
+  //       if (guess.score === undefined) {
+  //         guess.score = Math.floor(Math.random() * 101);
+  //       }
+  //     });
+
+  //     // Update player total scores
+  //     currentRound.guesses.forEach((guess) => {
+  //       const playerScore = gameState.scores.find(
+  //         (s) => s.playerId === guess.playerId
+  //       );
+  //       if (playerScore && guess.score !== undefined) {
+  //         playerScore.totalScore += guess.score;
+  //       }
+  //     });
+
+  //     await this.updateGameState(gameState);
+  //     await this.startResultsPhase(lobbyCode);
+  //   } catch (error) {
+  //     console.error('Error handling scoring timeout:', error);
+  //     await this.startNewRound(lobbyCode);
+  //   }
+  // }
 
   private async scoreGuesses(
     originalPrompt: string,
@@ -657,7 +793,7 @@ export class GameService {
   Respond with ONLY an array of numbers representing the scores, like: [85, 72, 45]`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'user',
@@ -668,7 +804,7 @@ export class GameService {
       });
 
       const content = response.choices[0]?.message?.content;
-      console.log('OPENAI RESPONSE: ' + { content });
+      console.log(`OPENAI RESPONSE!: ${content}}`);
       if (!content) throw new Error('No response from OpenAI');
 
       const match = content.match(/\[(.*?)\]/);
@@ -695,6 +831,7 @@ export class GameService {
 
   private async startResultsPhase(lobbyCode: string): Promise<void> {
     try {
+      const RESULTS_DISPLAY_TIME = 15000; // 15 seconds
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
 
@@ -702,17 +839,20 @@ export class GameService {
       currentRound.status = 'results';
       await this.updateGameState(gameState);
 
+      // Emit results with nextRoundTime
+      const nextRoundTime = Date.now() + RESULTS_DISPLAY_TIME;
       this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
         originalPrompt: currentRound.prompt,
         guesses: currentRound.guesses,
-        scores: gameState.scores
+        scores: gameState.scores,
+        nextRoundTime // Add this to the payload
       });
 
       const gameComplete = await this.isGameComplete(gameState);
       if (gameComplete) {
-        setTimeout(() => this.endGame(lobbyCode), 5000);
+        setTimeout(() => this.endGame(lobbyCode), RESULTS_DISPLAY_TIME);
       } else {
-        setTimeout(() => this.startNewRound(lobbyCode), 5000);
+        setTimeout(() => this.startNewRound(lobbyCode), RESULTS_DISPLAY_TIME);
       }
     } catch (error) {
       console.error('Error starting results phase:', error);

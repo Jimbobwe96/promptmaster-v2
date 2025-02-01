@@ -14,6 +14,7 @@ import { GeneratingPhase } from './components/PromptingPhase/GeneratingPhase';
 import { GuessingPhase } from './components/GuessingPhase/GuessingPhase';
 import { type GuessInputHandle } from './components/GuessingPhase/GuessInput';
 import { ScoringPhase } from './components/GuessingPhase/ScoringPhase';
+import { ResultsPhase } from './components/ResultsPhase/ResultsPhase';
 
 interface GamePageProps {
   params: Promise<{
@@ -87,13 +88,6 @@ export default function GamePage({ params }: GamePageProps) {
           console.log(
             '\n\n\nRECEIVED GAME PROMPT SUBMITTED EVENT ON FRONTEND\n\n\n'
           );
-          // console.log('Received game:prompt_submitted event', {
-          //   prompterId,
-          //   mounted,
-          //   hasGameState: !!gameState,
-          //   currentRoundStatus:
-          //     gameState?.rounds[gameState.rounds.length - 1]?.status
-          // });
 
           if (!mounted || !gameState) return;
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
@@ -137,7 +131,7 @@ export default function GamePage({ params }: GamePageProps) {
                 if (index === prevState.rounds.length - 1) {
                   return {
                     ...round,
-                    status: 'guessing' as const, // Type this explicitly as RoundStatus
+                    status: 'guessing' as const,
                     imageUrl,
                     endTime
                   };
@@ -239,6 +233,26 @@ export default function GamePage({ params }: GamePageProps) {
               })
             };
           });
+        });
+
+        socket?.on('game:results', (results) => {
+          console.log('Received game results:', results);
+          if (!mounted || !gameState) return;
+
+          const currentRound = gameState.rounds[gameState.rounds.length - 1];
+          if (currentRound) {
+            // Update the round with results data
+            currentRound.status = 'results';
+            currentRound.prompt = results.originalPrompt;
+            currentRound.guesses = results.guesses;
+            currentRound.nextRoundTime = results.nextRoundTime;
+
+            // Update game state scores (fix the property name)
+            gameState.scores = results.scores; // Changed from results.totalScores
+
+            console.log('Updated gameState:', gameState); // Debug log
+            setGameState({ ...gameState });
+          }
         });
 
         setIsLoading(false);
@@ -350,6 +364,8 @@ export default function GamePage({ params }: GamePageProps) {
   );
   // console.log(currentRound.status);
 
+  console.log(currentRound.prompt);
+
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
@@ -362,7 +378,7 @@ export default function GamePage({ params }: GamePageProps) {
             {currentRound.status === 'generating' && 'Generating image...'}
             {currentRound.status === 'guessing' && 'Time to guess!'}
             {currentRound.status === 'scoring' && 'Scoring guesses...'}
-            {currentRound.status === 'results' && 'Round results'}
+            {currentRound.status === 'results' && 'Round Results'}
           </p>
         </div>
 
@@ -389,7 +405,35 @@ export default function GamePage({ params }: GamePageProps) {
 
         {currentRound.status === 'scoring' && <ScoringPhase />}
 
-        <div className="mt-8">{/* TODO: Add PlayerScores component */}</div>
+        {currentRound.status === 'results' && gameState.scores && (
+          <ResultsPhase
+            results={{
+              roundNumber: gameState.rounds.length,
+              imageUrl: currentRound.imageUrl!,
+              prompterId: currentRound.prompterId,
+              originalPrompt: currentRound.prompt,
+              guesses: currentRound.guesses.map((guess) => ({
+                ...guess,
+                score: guess.score ?? 0
+              })),
+              roundScores: gameState.scores.map((score) => ({
+                playerId: score.playerId,
+                score:
+                  currentRound.guesses.find(
+                    (g) => g.playerId === score.playerId
+                  )?.score ?? 0
+              })),
+              scores: gameState.scores,
+              isLastRound:
+                gameState.rounds.length === gameState.prompterOrder.length,
+              nextRoundTime: currentRound.nextRoundTime!
+            }}
+            players={players}
+            onNextRound={() => {
+              console.log('Ready for next round');
+            }}
+          />
+        )}
       </div>
     </main>
   );
