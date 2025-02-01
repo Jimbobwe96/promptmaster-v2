@@ -804,7 +804,7 @@ export class GameService {
       });
 
       const content = response.choices[0]?.message?.content;
-      console.log('OPENAI RESPONSE: ' + content);
+      console.log(`OPENAI RESPONSE!: ${content}}`);
       if (!content) throw new Error('No response from OpenAI');
 
       const match = content.match(/\[(.*?)\]/);

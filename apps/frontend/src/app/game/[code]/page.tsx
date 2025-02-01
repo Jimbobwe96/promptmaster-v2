@@ -88,13 +88,6 @@ export default function GamePage({ params }: GamePageProps) {
           console.log(
             '\n\n\nRECEIVED GAME PROMPT SUBMITTED EVENT ON FRONTEND\n\n\n'
           );
-          // console.log('Received game:prompt_submitted event', {
-          //   prompterId,
-          //   mounted,
-          //   hasGameState: !!gameState,
-          //   currentRoundStatus:
-          //     gameState?.rounds[gameState.rounds.length - 1]?.status
-          // });
 
           if (!mounted || !gameState) return;
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
@@ -138,7 +131,7 @@ export default function GamePage({ params }: GamePageProps) {
                 if (index === prevState.rounds.length - 1) {
                   return {
                     ...round,
-                    status: 'guessing' as const, // Type this explicitly as RoundStatus
+                    status: 'guessing' as const,
                     imageUrl,
                     endTime
                   };
@@ -250,6 +243,7 @@ export default function GamePage({ params }: GamePageProps) {
           if (currentRound) {
             // Update the round with results data
             currentRound.status = 'results';
+            currentRound.prompt = results.originalPrompt;
             currentRound.guesses = results.guesses;
             currentRound.nextRoundTime = results.nextRoundTime;
 
