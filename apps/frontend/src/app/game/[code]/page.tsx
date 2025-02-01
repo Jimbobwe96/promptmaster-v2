@@ -370,6 +370,8 @@ export default function GamePage({ params }: GamePageProps) {
   );
   // console.log(currentRound.status);
 
+  console.log(currentRound.prompt);
+
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
@@ -382,7 +384,7 @@ export default function GamePage({ params }: GamePageProps) {
             {currentRound.status === 'generating' && 'Generating image...'}
             {currentRound.status === 'guessing' && 'Time to guess!'}
             {currentRound.status === 'scoring' && 'Scoring guesses...'}
-            {currentRound.status === 'results' && 'Round results'}
+            {currentRound.status === 'results' && 'Round Results'}
           </p>
         </div>
 
