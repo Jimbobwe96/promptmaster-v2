@@ -832,37 +832,6 @@ export class GameService {
 
   // ==================== Results & Game End ====================
 
-  // private async startResultsPhase(lobbyCode: string): Promise<void> {
-  //   try {
-  //     const RESULTS_DISPLAY_TIME = 15000; // 15 seconds
-  //     const gameState = await this.getGameState(lobbyCode);
-  //     if (!gameState) throw new Error('Game not found');
-
-  //     const currentRound = gameState.rounds[gameState.rounds.length - 1];
-  //     currentRound.status = 'results';
-  //     await this.updateGameState(gameState);
-
-  //     // Emit results with nextRoundTime
-  //     const nextRoundTime = Date.now() + RESULTS_DISPLAY_TIME;
-  //     this.io.to(`lobby:${lobbyCode}`).emit('game:results', {
-  //       originalPrompt: currentRound.prompt,
-  //       guesses: currentRound.guesses,
-  //       scores: gameState.scores,
-  //       nextRoundTime // Add this to the payload
-  //     });
-
-  //     const gameComplete = await this.isGameComplete(gameState);
-  //     if (gameComplete) {
-  //       setTimeout(() => this.endGame(lobbyCode), RESULTS_DISPLAY_TIME);
-  //     } else {
-  //       setTimeout(() => this.startNewRound(lobbyCode), RESULTS_DISPLAY_TIME);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error starting results phase:', error);
-  //     await this.startNewRound(lobbyCode);
-  //   }
-  // }
-
   private async startResultsPhase(lobbyCode: string): Promise<void> {
     try {
       const RESULTS_DISPLAY_TIME = 20000; // 20 seconds for ready phase
@@ -902,6 +871,8 @@ export class GameService {
   }
 
   private async broadcastReadyState(lobbyCode: string): Promise<void> {
+    console.log('inside broadcastReadyState');
+
     const gameState = await this.getGameState(lobbyCode);
     if (!gameState) return;
 
@@ -916,6 +887,7 @@ export class GameService {
   }
 
   async handlePlayerReady(lobbyCode: string, playerId: string): Promise<void> {
+    console.log('inside gameService handlePlayerReady type shi');
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
@@ -924,13 +896,17 @@ export class GameService {
 
       // Only allow marking ready during results phase
       if (currentRound.status !== 'results') return;
+      console.log('round status is results');
 
       // Don't allow duplicate ready markers
       if (currentRound.readyPlayers.includes(playerId)) return;
+      console.log('this request wasnt a duplicate ready');
 
       // Add player to ready list
       currentRound.readyPlayers.push(playerId);
       await this.updateGameState(gameState);
+
+      console.log(`gamestate: ${gameState}`);
 
       // Broadcast updated ready state
       await this.broadcastReadyState(lobbyCode);

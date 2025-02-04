@@ -480,6 +480,7 @@ export class SocketService {
       });
 
       socket.on('game:mark_ready', async () => {
+        console.log('received game:mark_ready on backend');
         try {
           // Get lobby code for this socket
           const code = this.socketToLobby.get(socket.id);

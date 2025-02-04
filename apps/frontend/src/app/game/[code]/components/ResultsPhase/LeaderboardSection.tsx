@@ -35,6 +35,8 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
     if (!socket) return;
 
     socket.on('game:ready_state_update', (data) => {
+      console.log('received game:ready_state_update');
+      console.log(`data.readyPlayers: ${data.readyPlayers}`);
       setReadyPlayers(data.readyPlayers);
       setReadyPhaseEndTime(data.readyPhaseEndTime);
     });
@@ -46,7 +48,9 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
 
   const handleReadyClick = () => {
     if (!socket || isReady) return;
-    emit('game:mark_ready');
+    console.log('emitted game:mark_ready');
+    // emit('game:mark_ready');
+    socket.emit('game:mark_ready');
   };
 
   const rankedScores = [...scores].sort((a, b) => b.totalScore - a.totalScore);
@@ -193,16 +197,20 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
         </div>
       </div>
 
-      <div className="mt-3 space-y-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-slate-600">
+      <div className="mt-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-center gap-3 text-slate-600">
+            <span className="font-medium">
               {readyPlayers.length}/{players.length} Players Ready
             </span>
             {readyPhaseEndTime && (
-              <Timer endTime={readyPhaseEndTime} isPaused={false} />
+              <>
+                <span>•</span>
+                <Timer endTime={readyPhaseEndTime} isPaused={false} />
+              </>
             )}
           </div>
+
           <button
             onClick={handleReadyClick}
             disabled={isReady}
@@ -213,29 +221,8 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
           >
-            {isReady ? "You're Ready!" : 'Ready'}
+            {isReady ? "You're Ready!" : 'Ready Up!'}
           </button>
-        </div>
-
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-2">
-            {players.map((player) => (
-              <div
-                key={player.id}
-                className={`p-2 rounded text-sm
-                  ${
-                    readyPlayers.includes(player.id)
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
-              >
-                {player.username}
-                {readyPlayers.includes(player.id) && (
-                  <span className="ml-1">✓</span>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </>

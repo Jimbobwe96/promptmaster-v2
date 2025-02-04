@@ -304,6 +304,7 @@ export default function GamePage({ params }: GamePageProps) {
         socket.off('game:request_guess_draft');
         socket.off('game:scoring_started');
         socket.off('game:results');
+        socket.off('game:ready_state_update');
         socket.off('game:ended');
       }
       disconnect();
@@ -422,36 +423,6 @@ export default function GamePage({ params }: GamePageProps) {
         )}
 
         {currentRound.status === 'scoring' && <ScoringPhase />}
-
-        {/* {currentRound.status === 'results' && gameState.scores && (
-          <ResultsPhase
-            results={{
-              roundNumber: gameState.rounds.length,
-              imageUrl: currentRound.imageUrl!,
-              prompterId: currentRound.prompterId,
-              originalPrompt: currentRound.prompt,
-              guesses: currentRound.guesses.map((guess) => ({
-                ...guess,
-                score: guess.score ?? 0
-              })),
-              roundScores: gameState.scores.map((score) => ({
-                playerId: score.playerId,
-                score:
-                  currentRound.guesses.find(
-                    (g) => g.playerId === score.playerId
-                  )?.score ?? 0
-              })),
-              scores: gameState.scores,
-              isLastRound:
-                gameState.rounds.length === gameState.prompterOrder.length,
-              nextRoundTime: currentRound.nextRoundTime!
-            }}
-            players={players}
-            onNextRound={() => {
-              console.log('Ready for next round');
-            }}
-          />
-        )} */}
 
         {currentRound.status === 'results' && gameState.scores && (
           <ResultsPhase

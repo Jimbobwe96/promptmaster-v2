@@ -21,7 +21,6 @@ export const ImageSection: React.FC<ImageSectionProps> = ({
       {/* Image */}
       <div className="max-w-xl mx-auto">
         {' '}
-        {/* Added max width container */}
         <img
           src={imageUrl}
           alt="AI Generated"
