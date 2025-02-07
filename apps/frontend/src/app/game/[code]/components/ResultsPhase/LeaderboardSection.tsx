@@ -35,8 +35,9 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
     if (!socket) return;
 
     socket.on('game:ready_state_update', (data) => {
-      console.log('received game:ready_state_update');
-      console.log(`data.readyPlayers: ${data.readyPlayers}`);
+      console.log('Socket ID:', socket.id);
+      console.log('Ready players before update:', readyPlayers);
+      console.log('Received new ready players:', data.readyPlayers);
       setReadyPlayers(data.readyPlayers);
       setReadyPhaseEndTime(data.readyPhaseEndTime);
     });
@@ -104,6 +105,12 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
       </div>
     );
   };
+
+  console.log('Current ready state:', {
+    readyPlayers,
+    socketId: socket?.id,
+    isReady
+  });
 
   return (
     <>
