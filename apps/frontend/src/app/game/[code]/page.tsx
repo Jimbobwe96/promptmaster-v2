@@ -378,13 +378,6 @@ export default function GamePage({ params }: GamePageProps) {
     return null;
   }
 
-  console.log(
-    'CURRENT ROUND STATUS FOR CONDITIONAL RENDER:' + currentRound.status + '\n'
-  );
-  // console.log(currentRound.status);
-
-  console.log(currentRound.prompt);
-
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
