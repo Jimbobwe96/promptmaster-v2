@@ -74,21 +74,41 @@ export default function GamePage({ params }: GamePageProps) {
           if (mounted) setGameState(initialState);
         });
 
-        socket?.on('game:round_started', (round) => {
-          if (!mounted || !gameState) return;
-          const currentRound = gameState.rounds[gameState.rounds.length - 1];
-          if (currentRound) {
-            currentRound.endTime = round.endTime;
-            setGameState({ ...gameState });
+        socket?.on('game:round_started', (newRound) => {
+          console.log(`[ROUND] Received new round:`, {
+            newRoundId: newRound.prompterId,
+            newRoundStatus: newRound.status,
+            currentRoundsCount: gameState?.rounds.length || 0
+          });
+
+          if (!mounted || !gameState) {
+            console.log(
+              '[ROUND] Component not mounted or no gameState, ignoring round start'
+            );
+            return;
           }
+
+          setGameState((prevState) => {
+            if (!prevState) {
+              console.log('[ROUND] No previous state available, cannot update');
+              return null;
+            }
+
+            console.log('[ROUND] Adding new round to game state', {
+              prevRoundsCount: prevState.rounds.length,
+              newRoundsCount: prevState.rounds.length + 1
+            });
+
+            // Add the new round to rounds array
+            return {
+              ...prevState,
+              rounds: [...prevState.rounds, newRound]
+            };
+          });
         });
 
         // triggers generating phase
         socket?.on('game:prompt_submitted', (prompterId) => {
-          console.log(
-            '\n\n\nRECEIVED GAME PROMPT SUBMITTED EVENT ON FRONTEND\n\n\n'
-          );
-
           if (!mounted || !gameState) return;
           const currentRound = gameState.rounds[gameState.rounds.length - 1];
           if (currentRound) {
@@ -101,7 +121,6 @@ export default function GamePage({ params }: GamePageProps) {
           console.log('Received draft request');
           if (promptInputRef.current) {
             const draft = promptInputRef.current.getDraft();
-            console.log('Sending draft:', draft);
             if (draft) {
               emit('game:submit_draft', draft);
             }
@@ -253,10 +272,6 @@ export default function GamePage({ params }: GamePageProps) {
             // Update game state scores
             gameState.scores = results.scores;
 
-            console.log(
-              'Updated gameState with prompt and ready state:',
-              gameState
-            );
             setGameState({ ...gameState });
           }
         });
@@ -364,8 +379,6 @@ export default function GamePage({ params }: GamePageProps) {
   }
 
   const currentRound = gameState.rounds[gameState.rounds.length - 1];
-  console.log('Current game state:', gameState);
-  console.log('Current round:', currentRound);
 
   if (!currentRound) {
     console.log('No current round');
@@ -377,6 +390,12 @@ export default function GamePage({ params }: GamePageProps) {
     console.log('Waiting for round endTime...');
     return null;
   }
+
+  console.log('[RENDER] Current game state:', {
+    hasGameState: !!gameState,
+    roundsCount: gameState?.rounds.length || 0,
+    currentRoundStatus: currentRound?.status || 'none'
+  });
 
   return (
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
@@ -444,6 +463,20 @@ export default function GamePage({ params }: GamePageProps) {
             }}
             players={players}
           />
+        )}
+
+        {/* Fallback if no condition is met */}
+        {(!currentRound || currentRound.status === undefined) && (
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+              <div className="animate-spin w-8 h-8 border-4 border-[#4F46E5] border-t-transparent rounded-full mb-4" />
+              <p className="text-slate-600">Transitioning to next round...</p>
+              <p className="text-xs text-slate-400 mt-2">
+                Debug: {gameState?.rounds.length || 0} rounds, Status:{' '}
+                {currentRound?.status || 'undefined'}
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </main>
