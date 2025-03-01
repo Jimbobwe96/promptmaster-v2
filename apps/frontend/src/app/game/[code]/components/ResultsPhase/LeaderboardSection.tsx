@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { LobbyPlayer } from '@promptmaster/shared';
 import type { RoundResults } from '@promptmaster/shared';
+import { Timer } from '../Timer';
+import { useSocket } from '@/hooks/useSocket';
 
 interface LeaderboardSectionProps {
   scores: RoundResults['scores'];
@@ -10,6 +12,8 @@ interface LeaderboardSectionProps {
   prompterId: string;
   isLastRound: boolean;
   onNextRound?: () => void;
+  readyPlayers: string[];
+  readyPhaseEndTime: number;
 }
 
 export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
@@ -19,9 +23,20 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
   players,
   prompterId,
   isLastRound,
-  onNextRound
+  readyPlayers,
+  readyPhaseEndTime
 }) => {
-  const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
+  const [activePlayerId, setActivePlayerId] = React.useState<string | null>(
+    null
+  );
+  const { socket, emit } = useSocket();
+
+  const isReady = socket?.id ? readyPlayers.includes(socket.id) : false;
+
+  const handleReadyClick = () => {
+    if (!socket || isReady) return;
+    emit('game:mark_ready');
+  };
 
   const rankedScores = [...scores].sort((a, b) => b.totalScore - a.totalScore);
 
@@ -94,8 +109,8 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
               <div key={score.playerId} className="relative">
                 <div
                   className={`relative flex items-center p-4 border rounded-lg shadow-sm 
-                            ${getRankStyles(index)}
-                            ${guess ? 'cursor-pointer hover:border-indigo-200' : ''}`}
+                              ${getRankStyles(index)}
+                              ${guess ? 'cursor-pointer hover:border-indigo-200' : ''}`}
                   onMouseEnter={() =>
                     guess && setActivePlayerId(score.playerId)
                   }
@@ -131,8 +146,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
 
                   {index < 3 && isLastRound && (
                     <div
-                      className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg
-                                  text-lg"
+                      className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg text-lg"
                       style={{
                         background:
                           index === 0
@@ -157,7 +171,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
                       </div>
                     </div>
                     <p className="text-slate-600 text-sm italic">
-                      "{guess.guess}"
+                      &ldquo;{guess.guess}&rdquo;
                     </p>
                     <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 rotate-45 bg-white" />
                   </div>
@@ -168,16 +182,34 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
         </div>
       </div>
 
-      {onNextRound && (
-        <button
-          onClick={onNextRound}
-          className="w-full mt-3 px-6 py-4 bg-indigo-100 text-indigo-700 rounded-xl text-lg font-medium 
-                   hover:bg-indigo-200 transition-all duration-200
-                   border border-indigo-200"
-        >
-          {isLastRound ? 'View Final Results' : 'Next Round'}
-        </button>
-      )}
+      <div className="mt-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-center gap-3 text-slate-600">
+            <span className="font-medium">
+              {readyPlayers.length}/{players.length} Players Ready
+            </span>
+            {readyPhaseEndTime && (
+              <>
+                <span>•</span>
+                <Timer endTime={readyPhaseEndTime} isPaused={false} />
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={handleReadyClick}
+            disabled={isReady}
+            className={`w-full px-6 py-4 rounded-xl text-lg font-medium transition-all duration-200
+              ${
+                isReady
+                  ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
+          >
+            {isReady ? "You're Ready!" : 'Ready Up!'}
+          </button>
+        </div>
+      </div>
     </>
   );
 };

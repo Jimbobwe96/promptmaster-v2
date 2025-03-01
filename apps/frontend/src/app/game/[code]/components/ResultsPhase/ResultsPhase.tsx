@@ -34,6 +34,8 @@ export const ResultsPhase: React.FC<ResultsPhaseProps> = ({
             prompterId={results.prompterId}
             isLastRound={results.isLastRound}
             onNextRound={onNextRound}
+            readyPlayers={results.readyPlayers}
+            readyPhaseEndTime={results.readyPhaseEndTime}
           />
         </div>
       </div>

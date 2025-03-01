@@ -21,7 +21,6 @@ export const ImageSection: React.FC<ImageSectionProps> = ({
       {/* Image */}
       <div className="max-w-xl mx-auto">
         {' '}
-        {/* Added max width container */}
         <img
           src={imageUrl}
           alt="AI Generated"
@@ -32,9 +31,9 @@ export const ImageSection: React.FC<ImageSectionProps> = ({
       {/* Prompt */}
       <div className="text-center">
         <h3 className="text-lg font-medium text-slate-800 mb-2">
-          {prompter?.username}'s prompt
+          {prompter?.username}&apos;s prompt
         </h3>
-        <p className="text-slate-600 italic text-lg">"{prompt}"</p>
+        <p className="text-slate-600 italic text-lg">&ldquo;{prompt}&rdquo;</p>
       </div>
     </div>
   );
