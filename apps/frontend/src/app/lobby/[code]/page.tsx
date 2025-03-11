@@ -4,7 +4,7 @@ import React, { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useSocket } from '@/hooks/useSocket';
-import type { Lobby, SessionData, GameState } from '@promptmaster/shared';
+import type { Lobby, LobbySession, GameState } from '@promptmaster/shared';
 import { PlayerList } from './components/PlayerList';
 import { ShareCode } from './components/ShareCode';
 import { LobbySettings } from './components/LobbySettings';
@@ -35,7 +35,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           throw new Error('No session data found');
         }
 
-        const session: SessionData = JSON.parse(sessionData);
+        const session: LobbySession = JSON.parse(sessionData);
 
         // Establish socket connection
         await connect();

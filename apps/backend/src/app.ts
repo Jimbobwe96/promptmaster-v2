@@ -8,6 +8,7 @@ import { connectRedis } from './config/redis';
 import cors from 'cors';
 import type { CorsOptions } from 'cors';
 import lobbyRoutes from './routes/lobby';
+import sessionRoutes from './routes/sessions';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use('/api/lobbies', lobbyRoutes);
+app.use('api/sessions', sessionRoutes);
 
 const server = http.createServer(app);
 
