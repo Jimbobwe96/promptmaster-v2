@@ -1,6 +1,6 @@
 import express, { Request, Response, RequestHandler } from 'express';
 import { z } from 'zod'; // currently not yet used for validation
-import type { Lobby, LobbyPlayer } from '@promptmaster/shared';
+import type { Lobby, Player } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
 import crypto from 'crypto';
@@ -48,6 +48,7 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
     let code = generateLobbyCode();
     let exists = await redisClient.get(`lobby:${code}`);
 
+    // retry code generation until we get unique one? i think
     while (exists) {
       code = generateLobbyCode();
       exists = await redisClient.get(`lobby:${code}`);
@@ -60,7 +61,6 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
         {
           id: '',
           username,
-          isHost: true,
           connected: false
         }
       ],
@@ -86,8 +86,8 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
 
     // Remove return
     res.status(201).json({
-      code,
-      isHost: true
+      code
+      // isHost: true
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -137,14 +137,14 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
     }
 
     // Add the new player to the lobby
-    const newPlayer: LobbyPlayer = {
-      id: '', // Will be set when socket connects
+    const player: Player = {
+      id: '', // will be set when socket connects
       username,
-      isHost: false,
-      connected: false
+      connected: false // will be set to true in lobby:validate
     };
 
-    lobby.players.push(newPlayer);
+    // lobby.players.push(newPlayer);
+    lobby.players.push(player);
 
     // Save the updated lobby back to Redis
     await redisClient.setEx(
@@ -154,6 +154,7 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
     );
 
     // Reserve username (keeping this from original)
+    // TODO: investigate username 'reservations' with i dont fw
     await redisClient.setEx(
       `lobby:${code}:username:${username}`,
       5 * 60,
@@ -161,8 +162,8 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
     );
 
     res.status(200).json({
-      code,
-      isHost: false
+      code
+      // isHost: false
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

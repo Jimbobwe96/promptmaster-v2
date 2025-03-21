@@ -177,7 +177,6 @@ export default function LobbyPage({ params }: LobbyPageProps) {
               players={lobby.players}
               hostId={lobby.hostId}
               currentUserId={socket?.id ?? ''}
-              isHost={lobby.hostId === socket?.id}
               onKickPlayer={handleKickPlayer}
             />
           </div>
@@ -185,7 +184,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           <div>
             <LobbySettings
               settings={lobby.settings}
-              isHost={lobby.hostId === socket?.id}
+              playerIsHost={lobby.hostId === socket?.id}
               canStart={lobby.players.filter((p) => p.connected).length >= 2}
               onStart={() => emit('lobby:start_game')}
               onUpdate={(settings) => emit('lobby:update_settings', settings)}

@@ -1,11 +1,11 @@
 import React from 'react';
-import type { LobbyPlayer } from '@promptmaster/shared';
+import type { Player } from '@promptmaster/shared';
 
 interface ImageSectionProps {
   imageUrl: string;
   prompt: string;
   prompterId: string;
-  players: LobbyPlayer[];
+  players: Player[];
 }
 
 export const ImageSection: React.FC<ImageSectionProps> = ({

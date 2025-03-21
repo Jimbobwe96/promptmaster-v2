@@ -3,11 +3,7 @@
 import React, { use, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
-import type {
-  GameState,
-  LobbySession,
-  LobbyPlayer
-} from '@promptmaster/shared';
+import type { GameState, LobbySession, Player } from '@promptmaster/shared';
 import { PromptingPhase } from './components/PromptingPhase/PromptingPhase';
 import { type PromptInputHandle } from './components/PromptingPhase/PromptInput';
 import { GeneratingPhase } from './components/PromptingPhase/GeneratingPhase';
@@ -31,7 +27,7 @@ export default function GamePage({ params }: GamePageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [players, setPlayers] = useState<LobbyPlayer[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>('');
 
   const promptInputRef = useRef<PromptInputHandle>(null);

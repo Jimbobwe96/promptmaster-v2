@@ -1,5 +1,5 @@
 import React from 'react';
-import type { LobbyPlayer } from '@promptmaster/shared';
+import type { Player } from '@promptmaster/shared';
 import type { RoundResults } from '@promptmaster/shared';
 import { Timer } from '../Timer';
 import { useSocket } from '@/hooks/useSocket';
@@ -8,7 +8,7 @@ interface LeaderboardSectionProps {
   scores: RoundResults['scores'];
   roundScores: RoundResults['roundScores'];
   guesses: RoundResults['guesses'];
-  players: LobbyPlayer[];
+  players: Player[];
   prompterId: string;
   isLastRound: boolean;
   onNextRound?: () => void;

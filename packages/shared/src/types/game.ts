@@ -1,8 +1,7 @@
 // Core Types
-export interface LobbyPlayer {
+export interface Player {
   id: string; // Socket ID
   username: string; // 1-25 chars, unique in lobby
-  isHost: boolean;
   connected: boolean; // For reconnection window
   lastSeen?: Date; // For tracking disconnections (30 second window)
 }
@@ -15,7 +14,7 @@ export interface LobbySettings {
 export interface Lobby {
   code: string; // 6-digit unique code
   hostId: string; // Socket ID of host
-  players: LobbyPlayer[];
+  players: Player[];
   settings: LobbySettings;
   status: LobbyStatus;
   createdAt: Date; // For potential lobby lifetime limiting
@@ -136,6 +135,7 @@ export interface ClientToServerEvents {
 export interface LobbySession {
   code: string;
   username: string;
+  // session data will change soon
   isHost: boolean;
   joinedAt: string;
 }

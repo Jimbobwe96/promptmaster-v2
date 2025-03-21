@@ -4,7 +4,7 @@ import type { LobbySettings as LobbySettingsType } from '@promptmaster/shared';
 
 interface LobbySettingsProps {
   settings: LobbySettingsType;
-  isHost: boolean;
+  playerIsHost: boolean;
   canStart: boolean;
   onStart: () => void;
   onUpdate: (settings: Partial<LobbySettingsType>) => void;
@@ -13,7 +13,7 @@ interface LobbySettingsProps {
 
 export const LobbySettings = ({
   settings,
-  isHost,
+  playerIsHost,
   canStart,
   onStart,
   onUpdate,
@@ -59,10 +59,10 @@ export const LobbySettings = ({
             max={LOBBY_CONSTRAINTS.MAX_ROUNDS_PER_PLAYER}
             value={settings.roundsPerPlayer}
             onChange={handleRoundsChange}
-            disabled={!isHost}
+            disabled={!playerIsHost}
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
               ${
-                isHost
+                playerIsHost
                   ? 'bg-slate-200 range-input-host'
                   : 'bg-slate-100 cursor-not-allowed'
               }`}
@@ -85,10 +85,10 @@ export const LobbySettings = ({
             max={LOBBY_CONSTRAINTS.MAX_TIME_LIMIT}
             value={settings.timeLimit}
             onChange={handleTimeLimitChange}
-            disabled={!isHost}
+            disabled={!playerIsHost}
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
               ${
-                isHost
+                playerIsHost
                   ? 'bg-slate-200 range-input-host'
                   : 'bg-slate-100 cursor-not-allowed'
               }`}
@@ -100,7 +100,7 @@ export const LobbySettings = ({
         </div>
 
         {/* Control messages */}
-        {!isHost && (
+        {!playerIsHost && (
           <p className="text-sm text-slate-500 italic mb-6">
             Only the host can modify game settings
           </p>
@@ -110,18 +110,18 @@ export const LobbySettings = ({
         <div className="pt-4 border-t border-slate-200">
           <button
             onClick={onStart}
-            disabled={isHost ? !canStart : true}
+            disabled={playerIsHost ? !canStart : true}
             className={`w-full px-6 py-3 rounded-lg font-medium
                      transition-all duration-200
                      ${
-                       isHost
+                       playerIsHost
                          ? 'bg-[#4F46E5] text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:translate-y-[-2px]'
                          : 'bg-slate-100 text-slate-600'
                      }
                      disabled:opacity-50 disabled:cursor-not-allowed
                      disabled:hover:translate-y-0 disabled:hover:shadow-none`}
           >
-            {isHost ? (
+            {playerIsHost ? (
               !canStart ? (
                 <>
                   <span className="block text-lg">Waiting for Players</span>
@@ -164,7 +164,7 @@ export const LobbySettings = ({
           {showLeaveConfirm && (
             <div className="absolute bottom-full left-0 right-0 mb-2 p-4 bg-white rounded-lg shadow-lg border border-red-100">
               <p className="text-sm text-slate-600 mb-3">
-                {isHost
+                {playerIsHost
                   ? 'Are you sure you want to leave? Host privileges will be transferred to another player.'
                   : 'Are you sure you want to leave this lobby?'}
               </p>

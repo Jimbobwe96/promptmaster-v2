@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { LobbyPlayer } from '@promptmaster/shared';
+import type { Player } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 
 interface PlayerListProps {
-  players: LobbyPlayer[];
+  players: Player[];
   hostId: string;
   currentUserId: string;
-  isHost?: boolean;
   onKickPlayer?: (playerId: string) => void;
 }
 
@@ -14,7 +13,6 @@ export const PlayerList = ({
   players,
   hostId,
   currentUserId,
-  isHost,
   onKickPlayer
 }: PlayerListProps) => {
   const [kickingPlayerId, setKickingPlayerId] = useState<string | null>(null);
@@ -146,7 +144,7 @@ export const PlayerList = ({
                   </div>
                 </div>
 
-                {isHost && player.id !== hostId && (
+                {currentUserId === hostId && player.id !== hostId && (
                   <div className="flex items-center">
                     {kickingPlayerId === player.id ? (
                       <div className="flex items-center space-x-2">

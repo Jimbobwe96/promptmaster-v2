@@ -1,11 +1,11 @@
 import React from 'react';
-import type { RoundResults, LobbyPlayer } from '@promptmaster/shared';
+import type { RoundResults, Player } from '@promptmaster/shared';
 import { ImageSection } from './ImageSection';
 import { LeaderboardSection } from './LeaderboardSection';
 
 interface ResultsPhaseProps {
   results: RoundResults;
-  players: LobbyPlayer[];
+  players: Player[];
   onNextRound?: () => void;
 }
 

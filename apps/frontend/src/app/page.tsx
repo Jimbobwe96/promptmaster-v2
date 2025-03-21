@@ -42,7 +42,6 @@ export default function Home() {
       const session = {
         code: lobby.code,
         username: createName.trim(),
-        isHost: true,
         joinedAt: new Date().toISOString()
       };
       sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
@@ -85,7 +84,7 @@ export default function Home() {
       const session = {
         code: lobby.code,
         username: joinName.trim(),
-        isHost: false,
+        // isHost: false,
         joinedAt: new Date().toISOString()
       };
       sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));

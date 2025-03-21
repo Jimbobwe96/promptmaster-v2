@@ -1,13 +1,13 @@
 import React, { forwardRef } from 'react';
 import { PromptInput, PromptInputHandle } from './PromptInput';
 import { WaitingForPrompt } from './WaitingForPrompt';
-import type { GameRound, LobbyPlayer } from '@promptmaster/shared';
+import type { GameRound, Player } from '@promptmaster/shared';
 
 interface PromptingPhaseProps {
   round: GameRound;
   currentPlayerId: string;
   onPromptSubmit: (prompt: string) => void;
-  players: LobbyPlayer[];
+  players: Player[];
 }
 
 export const PromptingPhase = forwardRef<

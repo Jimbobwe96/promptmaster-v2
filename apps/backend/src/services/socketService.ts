@@ -85,7 +85,6 @@ export class SocketService {
           if (!updatedPlayers.some((p) => p.id === lobby.hostId)) {
             const newHost = updatedPlayers.find((p) => p.connected);
             if (newHost) {
-              newHost.isHost = true;
               lobby.hostId = newHost.id;
             }
           }
@@ -159,13 +158,14 @@ export class SocketService {
             return;
           }
 
+          // now player has a socket id!
           // Update player's socket ID and connection status
           player.id = socket.id;
           player.connected = true;
           player.lastSeen = new Date();
 
-          // If this player is the host (isHost: true), update the lobby's hostId
-          if (player.isHost) {
+          // If this player is the host (first player in lobby), update hostId
+          if (lobby.players.length === 1) {
             lobby.hostId = socket.id;
             console.log(
               `Updated hostId to ${socket.id} for host player ${username}`
@@ -283,7 +283,6 @@ export class SocketService {
           if (socket.id === lobby.hostId && lobby.players.length > 0) {
             const newHost = lobby.players.find((p) => p.connected);
             if (newHost) {
-              newHost.isHost = true;
               lobby.hostId = newHost.id;
             }
           }
