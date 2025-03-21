@@ -9,12 +9,7 @@ interface PlayerListProps {
   onKickPlayer?: (playerId: string) => void;
 }
 
-export const PlayerList = ({
-  players,
-  hostId,
-  currentUserId,
-  onKickPlayer
-}: PlayerListProps) => {
+export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: PlayerListProps) => {
   const [kickingPlayerId, setKickingPlayerId] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const DISCONNECT_TIMEOUT_MS = 15000;
@@ -88,15 +83,10 @@ export const PlayerList = ({
         <div className="space-y-3">
           {players.map((player) => {
             const isCurrentUser = player.id === currentUserId;
-            const disconnectTimeMs = !player.connected
-              ? getDisconnectTime(player.lastSeen)
-              : 0;
+            const disconnectTimeMs = !player.connected ? getDisconnectTime(player.lastSeen) : 0;
             const remainingTimeSeconds = getRemainingTime(disconnectTimeMs);
 
-            if (
-              !player.connected &&
-              disconnectTimeMs >= DISCONNECT_TIMEOUT_MS
-            ) {
+            if (!player.connected && disconnectTimeMs >= DISCONNECT_TIMEOUT_MS) {
               return null;
             }
 
@@ -114,17 +104,11 @@ export const PlayerList = ({
               >
                 <div className="flex items-center space-x-3">
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      player.connected
-                        ? 'bg-green-400'
-                        : 'bg-red-400 animate-pulse'
-                    }`}
+                    className={`w-2 h-2 rounded-full ${player.connected ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-700">
-                        {player.username}
-                      </span>
+                      <span className="font-medium text-slate-700">{player.username}</span>
                       {player.id === hostId && (
                         <span className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">
                           Host

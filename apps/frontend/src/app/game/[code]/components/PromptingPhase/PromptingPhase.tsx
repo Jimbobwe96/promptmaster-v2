@@ -10,38 +10,28 @@ interface PromptingPhaseProps {
   players: Player[];
 }
 
-export const PromptingPhase = forwardRef<
-  PromptInputHandle,
-  PromptingPhaseProps
->(({ round, currentPlayerId, onPromptSubmit, players }, ref) => {
-  console.log('Phase endTime:', round.endTime);
-  const isPrompter = round.prompterId === currentPlayerId;
+export const PromptingPhase = forwardRef<PromptInputHandle, PromptingPhaseProps>(
+  ({ round, currentPlayerId, onPromptSubmit, players }, ref) => {
+    console.log('Phase endTime:', round.endTime);
+    const isPrompter = round.prompterId === currentPlayerId;
 
-  const prompterUsername =
-    players.find((p) => p.id === round.prompterId)?.username ||
-    'Unknown Player';
+    const prompterUsername = players.find((p) => p.id === round.prompterId)?.username || 'Unknown Player';
 
-  if (!round.endTime) {
-    console.log('No endTime available for round');
-    return null;
+    if (!round.endTime) {
+      console.log('No endTime available for round');
+      return null;
+    }
+
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        {isPrompter ? (
+          <PromptInput ref={ref} endTime={round.endTime} onSubmit={onPromptSubmit} />
+        ) : (
+          <WaitingForPrompt endTime={round.endTime} prompterUsername={prompterUsername} />
+        )}
+      </div>
+    );
   }
-
-  return (
-    <div className="w-full max-w-2xl mx-auto">
-      {isPrompter ? (
-        <PromptInput
-          ref={ref}
-          endTime={round.endTime}
-          onSubmit={onPromptSubmit}
-        />
-      ) : (
-        <WaitingForPrompt
-          endTime={round.endTime}
-          prompterUsername={prompterUsername}
-        />
-      )}
-    </div>
-  );
-});
+);
 
 PromptingPhase.displayName = 'PromptingPhase';

@@ -21,8 +21,7 @@ interface GamePageProps {
 export default function GamePage({ params }: GamePageProps) {
   const { code } = use(params);
   const router = useRouter();
-  const { socket, connect, disconnect, error, validateLobby, emit } =
-    useSocket();
+  const { socket, connect, disconnect, error, validateLobby, emit } = useSocket();
 
   const [isLoading, setIsLoading] = useState(true);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -78,9 +77,7 @@ export default function GamePage({ params }: GamePageProps) {
           });
 
           if (!mounted || !gameState) {
-            console.log(
-              '[ROUND] Component not mounted or no gameState, ignoring round start'
-            );
+            console.log('[ROUND] Component not mounted or no gameState, ignoring round start');
             return;
           }
 
@@ -123,44 +120,39 @@ export default function GamePage({ params }: GamePageProps) {
           }
         });
 
-        socket?.on(
-          'game:guessing_started',
-          ({ imageUrl, timeLimit, endTime }) => {
-            console.log('Received game:guessing_started event:', {
-              imageUrl,
-              timeLimit,
-              endTime
-            });
+        socket?.on('game:guessing_started', ({ imageUrl, timeLimit, endTime }) => {
+          console.log('Received game:guessing_started event:', {
+            imageUrl,
+            timeLimit,
+            endTime
+          });
 
-            if (!mounted) return;
+          if (!mounted) return;
 
-            setGameState((prevState) => {
-              if (!prevState) {
-                console.error(
-                  'No game state available when handling guessing_started'
-                );
-                return null;
+          setGameState((prevState) => {
+            if (!prevState) {
+              console.error('No game state available when handling guessing_started');
+              return null;
+            }
+
+            const updatedRounds = prevState.rounds.map((round, index) => {
+              if (index === prevState.rounds.length - 1) {
+                return {
+                  ...round,
+                  status: 'guessing' as const,
+                  imageUrl,
+                  endTime
+                };
               }
-
-              const updatedRounds = prevState.rounds.map((round, index) => {
-                if (index === prevState.rounds.length - 1) {
-                  return {
-                    ...round,
-                    status: 'guessing' as const,
-                    imageUrl,
-                    endTime
-                  };
-                }
-                return round;
-              });
-
-              return {
-                ...prevState,
-                rounds: updatedRounds
-              };
+              return round;
             });
-          }
-        );
+
+            return {
+              ...prevState,
+              rounds: updatedRounds
+            };
+          });
+        });
 
         socket?.on('game:guess_submitted', (playerId) => {
           if (!mounted) return;
@@ -227,9 +219,7 @@ export default function GamePage({ params }: GamePageProps) {
 
           setGameState((prevState) => {
             if (!prevState) {
-              console.error(
-                'No game state available when handling scoring_started'
-              );
+              console.error('No game state available when handling scoring_started');
               return null;
             }
 
@@ -320,16 +310,7 @@ export default function GamePage({ params }: GamePageProps) {
       }
       disconnect();
     };
-  }, [
-    gameState,
-    code,
-    connect,
-    disconnect,
-    validateLobby,
-    router,
-    socket,
-    emit
-  ]);
+  }, [gameState, code, connect, disconnect, validateLobby, router, socket, emit]);
 
   const handlePromptSubmit = (prompt: string) => {
     emit('game:submit_prompt', prompt);
@@ -355,9 +336,7 @@ export default function GamePage({ params }: GamePageProps) {
       <div className="min-h-screen bg-[#FAFBFF] flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="text-red-500 mb-4">⚠️</div>
-          <p className="text-slate-600 mb-4">
-            {connectionError || error?.message}
-          </p>
+          <p className="text-slate-600 mb-4">{connectionError || error?.message}</p>
           <button
             onClick={() => router.push('/')}
             className="px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-all"
@@ -397,9 +376,7 @@ export default function GamePage({ params }: GamePageProps) {
     <main className="min-h-screen bg-[#FAFBFF] relative overflow-hidden">
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-slate-800 mb-2">
-            Round {gameState.rounds.length}
-          </h1>
+          <h1 className="text-4xl font-bold text-slate-800 mb-2">Round {gameState.rounds.length}</h1>
           <p className="text-slate-600">
             {currentRound.status === 'prompting' && 'Waiting for prompt...'}
             {currentRound.status === 'generating' && 'Generating image...'}
@@ -445,14 +422,10 @@ export default function GamePage({ params }: GamePageProps) {
               })),
               roundScores: gameState.scores.map((score) => ({
                 playerId: score.playerId,
-                score:
-                  currentRound.guesses.find(
-                    (g) => g.playerId === score.playerId
-                  )?.score ?? 0
+                score: currentRound.guesses.find((g) => g.playerId === score.playerId)?.score ?? 0
               })),
               scores: gameState.scores,
-              isLastRound:
-                gameState.rounds.length === gameState.prompterOrder.length,
+              isLastRound: gameState.rounds.length === gameState.prompterOrder.length,
               nextRoundTime: currentRound.readyPhaseEndTime!,
               readyPlayers: currentRound.readyPlayers,
               readyPhaseEndTime: currentRound.readyPhaseEndTime!
@@ -468,8 +441,7 @@ export default function GamePage({ params }: GamePageProps) {
               <div className="animate-spin w-8 h-8 border-4 border-[#4F46E5] border-t-transparent rounded-full mb-4" />
               <p className="text-slate-600">Transitioning to next round...</p>
               <p className="text-xs text-slate-400 mt-2">
-                Debug: {gameState?.rounds.length || 0} rounds, Status:{' '}
-                {currentRound?.status || 'undefined'}
+                Debug: {gameState?.rounds.length || 0} rounds, Status: {currentRound?.status || 'undefined'}
               </p>
             </div>
           </div>

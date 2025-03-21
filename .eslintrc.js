@@ -2,11 +2,7 @@ module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'prettier'],
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended',
-    'prettier'
-  ],
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
   env: {
     node: true,
     es6: true
@@ -16,7 +12,7 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'prettier/prettier': 'error',
+    'prettier/prettier': 'off',
     'comma-dangle': ['error', 'never'],
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
@@ -85,12 +81,5 @@ module.exports = {
       }
     }
   ],
-  ignorePatterns: [
-    'node_modules',
-    'dist',
-    '.next',
-    'build',
-    '*.js',
-    '!.eslintrc.js'
-  ]
+  ignorePatterns: ['node_modules', 'dist', '.next', 'build', '*.js', '!.eslintrc.js']
 };

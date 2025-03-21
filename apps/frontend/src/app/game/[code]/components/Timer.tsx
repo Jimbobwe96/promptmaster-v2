@@ -6,22 +6,13 @@ interface TimerProps {
   isPaused?: boolean;
 }
 
-export const Timer: React.FC<TimerProps> = ({
-  endTime,
-  onComplete,
-  isPaused = false
-}) => {
+export const Timer: React.FC<TimerProps> = ({ endTime, onComplete, isPaused = false }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isComplete, setIsComplete] = useState(false);
 
   // Debug log
   useEffect(() => {
-    console.log(
-      'Timer received endTime:',
-      endTime,
-      'Current time:',
-      Date.now()
-    );
+    console.log('Timer received endTime:', endTime, 'Current time:', Date.now());
   }, [endTime]);
 
   // Calculate and format remaining time
@@ -104,15 +95,7 @@ export const Timer: React.FC<TimerProps> = ({
       <div className="relative w-12 h-12">
         {/* Background circle */}
         <svg className="w-full h-full -rotate-90">
-          <circle
-            cx="24"
-            cy="24"
-            r="20"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-            className="text-slate-200"
-          />
+          <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="none" className="text-slate-200" />
           {/* Progress circle */}
           <circle
             cx="24"
@@ -128,16 +111,12 @@ export const Timer: React.FC<TimerProps> = ({
         </svg>
         {/* Time text */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-sm font-medium text-slate-700">
-            {formatTime(timeLeft)}
-          </span>
+          <span className="text-sm font-medium text-slate-700">{formatTime(timeLeft)}</span>
         </div>
       </div>
 
       {/* Text description */}
-      <span className="text-sm text-slate-600">
-        {timeLeft > 0 ? 'Time Remaining' : "Time's up!"}
-      </span>
+      <span className="text-sm text-slate-600">{timeLeft > 0 ? 'Time Remaining' : "Time's up!"}</span>
     </div>
   );
 };

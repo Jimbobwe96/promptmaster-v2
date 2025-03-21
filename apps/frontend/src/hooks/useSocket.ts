@@ -3,11 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useRouter } from 'next/navigation';
-import type {
-  ClientToServerEvents,
-  ServerToClientEvents,
-  Lobby
-} from '@promptmaster/shared';
+import type { ClientToServerEvents, ServerToClientEvents, Lobby } from '@promptmaster/shared';
 
 type SocketType = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -109,8 +105,7 @@ export const useSocket = ({
           globalSocket.connect();
         }
       } catch (err) {
-        const error =
-          err instanceof Error ? err : new Error('Failed to connect to socket');
+        const error = err instanceof Error ? err : new Error('Failed to connect to socket');
         console.error('Socket initialization error:', error);
         setError(error);
         reject(error);
@@ -155,10 +150,7 @@ export const useSocket = ({
   }, []);
 
   const emit = useCallback(
-    <Event extends keyof ClientToServerEvents>(
-      event: Event,
-      ...args: Parameters<ClientToServerEvents[Event]>
-    ) => {
+    <Event extends keyof ClientToServerEvents>(event: Event, ...args: Parameters<ClientToServerEvents[Event]>) => {
       if (!globalSocket?.connected) {
         throw new Error('Socket not connected');
       }

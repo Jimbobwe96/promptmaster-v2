@@ -38,10 +38,7 @@ export class SocketService {
 
   private startCleanupInterval(): void {
     // Run cleanup every 5 seconds
-    this.cleanupInterval = setInterval(
-      () => this.cleanupDisconnectedPlayers(),
-      5000
-    );
+    this.cleanupInterval = setInterval(() => this.cleanupDisconnectedPlayers(), 5000);
   }
 
   private async cleanupDisconnectedPlayers(): Promise<void> {
@@ -63,8 +60,7 @@ export class SocketService {
         // Filter out players who have been disconnected for too long
         const updatedPlayers = lobby.players.filter((player) => {
           if (!player.connected && player.lastSeen) {
-            const disconnectedTime =
-              now.getTime() - new Date(player.lastSeen).getTime();
+            const disconnectedTime = now.getTime() - new Date(player.lastSeen).getTime();
             return disconnectedTime <= this.DISCONNECT_TIMEOUT;
           }
           return true;
@@ -102,11 +98,7 @@ export class SocketService {
     }
   }
 
-  private emitError(
-    socket: SocketWithData,
-    type: LobbyErrorType,
-    message: string
-  ) {
+  private emitError(socket: SocketWithData, type: LobbyErrorType, message: string) {
     const error: LobbyError = { type, message };
     socket.emit('lobby:error', error);
   }
@@ -117,20 +109,11 @@ export class SocketService {
   }
 
   private async updateLobby(lobby: Lobby): Promise<void> {
-    await redisClient.setEx(
-      `lobby:${lobby.code}`,
-      24 * 60 * 60,
-      JSON.stringify(lobby)
-    );
+    await redisClient.setEx(`lobby:${lobby.code}`, 24 * 60 * 60, JSON.stringify(lobby));
   }
 
-  private async verifyUsernameReservation(
-    code: string,
-    username: string
-  ): Promise<boolean> {
-    const reservation = await redisClient.get(
-      `lobby:${code}:username:${username}`
-    );
+  private async verifyUsernameReservation(code: string, username: string): Promise<boolean> {
+    const reservation = await redisClient.get(`lobby:${code}:username:${username}`);
     return reservation === 'reserved';
   }
 
@@ -150,11 +133,7 @@ export class SocketService {
           // Find player in lobby
           const player = lobby.players.find((p) => p.username === username);
           if (!player) {
-            this.emitError(
-              socket,
-              'PLAYER_NOT_FOUND',
-              'Player not found in lobby'
-            );
+            this.emitError(socket, 'PLAYER_NOT_FOUND', 'Player not found in lobby');
             return;
           }
 
@@ -167,9 +146,7 @@ export class SocketService {
           // If this player is the host (first player in lobby), update hostId
           if (lobby.players.length === 1) {
             lobby.hostId = socket.id;
-            console.log(
-              `Updated hostId to ${socket.id} for host player ${username}`
-            );
+            console.log(`Updated hostId to ${socket.id} for host player ${username}`);
           }
 
           // Join the socket to the lobby room
@@ -186,78 +163,61 @@ export class SocketService {
           this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
         } catch (error) {
           console.error('Error validating lobby connection:', error);
-          this.emitError(
-            socket,
-            'SERVER_ERROR',
-            'Failed to validate lobby connection'
-          );
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to validate lobby connection');
         }
       });
 
-      socket.on(
-        'lobby:update_settings',
-        async (settings: Partial<LobbySettings>) => {
-          try {
-            // Get lobby code from our map
-            const code = this.socketToLobby.get(socket.id);
-            if (!code) {
-              this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
-              return;
-            }
-
-            // Get lobby data
-            const lobby = await this.getLobby(code);
-            if (!lobby) {
-              this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
-              return;
-            }
-
-            // Verify user is host
-            if (lobby.hostId !== socket.id) {
-              this.emitError(
-                socket,
-                'NOT_HOST',
-                'Only the host can update settings'
-              );
-              return;
-            }
-
-            // Validate new settings
-            const newSettings = {
-              ...lobby.settings,
-              ...settings
-            };
-
-            if (
-              newSettings.roundsPerPlayer <
-                LOBBY_CONSTRAINTS.MIN_ROUNDS_PER_PLAYER ||
-              newSettings.roundsPerPlayer >
-                LOBBY_CONSTRAINTS.MAX_ROUNDS_PER_PLAYER ||
-              newSettings.timeLimit < LOBBY_CONSTRAINTS.MIN_TIME_LIMIT ||
-              newSettings.timeLimit > LOBBY_CONSTRAINTS.MAX_TIME_LIMIT
-            ) {
-              this.emitError(
-                socket,
-                'INVALID_SETTINGS',
-                'Invalid settings values'
-              );
-              return;
-            }
-
-            // Update lobby settings
-            lobby.settings = newSettings;
-
-            // Save updated lobby
-            await this.updateLobby(lobby);
-
-            // Broadcast update to all clients in the lobby
-            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
-          } catch (error) {
-            console.error('Error updating lobby settings:', error);
-            this.emitError(socket, 'SERVER_ERROR', 'Failed to update settings');
+      socket.on('lobby:update_settings', async (settings: Partial<LobbySettings>) => {
+        try {
+          // Get lobby code from our map
+          const code = this.socketToLobby.get(socket.id);
+          if (!code) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
           }
+
+          // Get lobby data
+          const lobby = await this.getLobby(code);
+          if (!lobby) {
+            this.emitError(socket, 'LOBBY_NOT_FOUND', 'Lobby not found');
+            return;
+          }
+
+          // Verify user is host
+          if (lobby.hostId !== socket.id) {
+            this.emitError(socket, 'NOT_HOST', 'Only the host can update settings');
+            return;
+          }
+
+          // Validate new settings
+          const newSettings = {
+            ...lobby.settings,
+            ...settings
+          };
+
+          if (
+            newSettings.roundsPerPlayer < LOBBY_CONSTRAINTS.MIN_ROUNDS_PER_PLAYER ||
+            newSettings.roundsPerPlayer > LOBBY_CONSTRAINTS.MAX_ROUNDS_PER_PLAYER ||
+            newSettings.timeLimit < LOBBY_CONSTRAINTS.MIN_TIME_LIMIT ||
+            newSettings.timeLimit > LOBBY_CONSTRAINTS.MAX_TIME_LIMIT
+          ) {
+            this.emitError(socket, 'INVALID_SETTINGS', 'Invalid settings values');
+            return;
+          }
+
+          // Update lobby settings
+          lobby.settings = newSettings;
+
+          // Save updated lobby
+          await this.updateLobby(lobby);
+
+          // Broadcast update to all clients in the lobby
+          this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+        } catch (error) {
+          console.error('Error updating lobby settings:', error);
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to update settings');
         }
-      );
+      });
 
       socket.on('lobby:leave', async () => {
         try {
@@ -300,9 +260,7 @@ export class SocketService {
 
             // Clean up username reservations
             if (leavingPlayer) {
-              await redisClient.del(
-                `lobby:${code}:username:${leavingPlayer.username}`
-              );
+              await redisClient.del(`lobby:${code}:username:${leavingPlayer.username}`);
             }
           }
 
@@ -336,11 +294,7 @@ export class SocketService {
 
           // Verify user is host
           if (lobby.hostId !== socket.id) {
-            this.emitError(
-              socket,
-              'NOT_HOST',
-              'Only the host can kick players'
-            );
+            this.emitError(socket, 'NOT_HOST', 'Only the host can kick players');
             return;
           }
 
@@ -393,11 +347,7 @@ export class SocketService {
 
           // Verify user is host
           if (lobby.hostId !== socket.id) {
-            this.emitError(
-              socket,
-              'NOT_HOST',
-              'Only the host can start the game'
-            );
+            this.emitError(socket, 'NOT_HOST', 'Only the host can start the game');
             return;
           }
 
@@ -495,11 +445,7 @@ export class SocketService {
           await gameService.handlePlayerReady(code, socket.id);
         } catch (error) {
           console.error('Error handling player ready:', error);
-          this.emitError(
-            socket,
-            'SERVER_ERROR',
-            'Failed to mark player as ready'
-          );
+          this.emitError(socket, 'SERVER_ERROR', 'Failed to mark player as ready');
         }
       });
 
@@ -521,10 +467,7 @@ export class SocketService {
             console.log('No lobby data found for code:', code);
             return;
           }
-          console.log(
-            'Current lobby data:',
-            JSON.stringify(lobbyData, null, 2)
-          );
+          console.log('Current lobby data:', JSON.stringify(lobbyData, null, 2));
 
           // Find and update the player
           const player = lobbyData.players.find((p) => p.id === socket.id);
@@ -559,18 +502,11 @@ export class SocketService {
 
             // Try to delete username reservations and log results
             for (const p of lobbyData.players) {
-              const usernameDeleteResult = await redisClient.del(
-                `lobby:${code}:username:${p.username}`
-              );
-              console.log(
-                `Delete username reservation result for ${p.username}:`,
-                usernameDeleteResult
-              );
+              const usernameDeleteResult = await redisClient.del(`lobby:${code}:username:${p.username}`);
+              console.log(`Delete username reservation result for ${p.username}:`, usernameDeleteResult);
             }
 
-            console.log(
-              `Attempted to delete lobby ${code} and its username reservations`
-            );
+            console.log(`Attempted to delete lobby ${code} and its username reservations`);
           } else {
             console.log('Saving updated lobby data...');
             await this.updateLobby(lobbyData);

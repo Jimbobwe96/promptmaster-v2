@@ -19,17 +19,11 @@ interface JoinLobbyBody {
 
 // Validation schemas remain the same
 const createLobbySchema = z.object({
-  username: z
-    .string()
-    .min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH)
-    .max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH)
+  username: z.string().min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH).max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH)
 });
 
 const joinLobbySchema = z.object({
-  username: z
-    .string()
-    .min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH)
-    .max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH),
+  username: z.string().min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH).max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH),
   code: z.string().length(LOBBY_CONSTRAINTS.CODE_LENGTH)
 });
 
@@ -38,10 +32,7 @@ const generateLobbyCode = (): string => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
-  req,
-  res
-) => {
+const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (req, res) => {
   try {
     const { username } = createLobbySchema.parse(req.body);
 
@@ -72,17 +63,9 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
       createdAt: new Date()
     };
 
-    await redisClient.setEx(
-      `lobby:${code}`,
-      24 * 60 * 60,
-      JSON.stringify(lobby)
-    );
+    await redisClient.setEx(`lobby:${code}`, 24 * 60 * 60, JSON.stringify(lobby));
 
-    await redisClient.setEx(
-      `lobby:${code}:username:${username}`,
-      5 * 60,
-      'reserved'
-    );
+    await redisClient.setEx(`lobby:${code}:username:${username}`, 5 * 60, 'reserved');
 
     // Remove return
     res.status(201).json({
@@ -103,10 +86,7 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (
 };
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
-  req,
-  res
-) => {
+const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (req, res) => {
   try {
     const { username, code } = joinLobbySchema.parse(req.body);
 
@@ -155,11 +135,7 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (
 
     // Reserve username (keeping this from original)
     // TODO: investigate username 'reservations' with i dont fw
-    await redisClient.setEx(
-      `lobby:${code}:username:${username}`,
-      5 * 60,
-      'reserved'
-    );
+    await redisClient.setEx(`lobby:${code}:username:${username}`, 5 * 60, 'reserved');
 
     res.status(200).json({
       code

@@ -8,20 +8,12 @@ interface WaitingForPromptProps {
   prompterUsername: string;
 }
 
-export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({
-  endTime,
-  prompterUsername
-}) => {
+export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({ endTime, prompterUsername }) => {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm text-center">
       <div className="mb-6">
         <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-8 h-8 text-indigo-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -30,12 +22,8 @@ export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-slate-800 mb-2">
-          Waiting for Prompt
-        </h2>
-        <p className="text-slate-600">
-          {prompterUsername} is creating the prompt...
-        </p>
+        <h2 className="text-xl font-semibold text-slate-800 mb-2">Waiting for Prompt</h2>
+        <p className="text-slate-600">{prompterUsername} is creating the prompt...</p>
       </div>
 
       <div className="flex justify-center">

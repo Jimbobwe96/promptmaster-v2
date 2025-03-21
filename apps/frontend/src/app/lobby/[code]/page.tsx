@@ -18,8 +18,7 @@ interface LobbyPageProps {
 export default function LobbyPage({ params }: LobbyPageProps) {
   const { code } = use(params);
   const router = useRouter();
-  const { connect, disconnect, validateLobby, error, socket, emit, on } =
-    useSocket();
+  const { connect, disconnect, validateLobby, error, socket, emit, on } = useSocket();
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -63,11 +62,9 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           if (mounted) {
             console.log('Received initial game state:', initialState);
             // Store the initial game state
-            sessionStorage.setItem(
-              `game:${code}:state`,
-              JSON.stringify(initialState)
-            );
+            sessionStorage.setItem(`game:${code}:state`, JSON.stringify(initialState));
             // Then navigate
+            // THIS IS WHERE WE REDIRECT TO /GAME/CODE
             router.replace(`/game/${code}`);
           }
         });
@@ -142,9 +139,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       <div className="min-h-screen bg-[#FAFBFF] flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="text-red-500 mb-4">⚠️</div>
-          <p className="text-slate-600 mb-4">
-            {connectionError || error?.message}
-          </p>
+          <p className="text-slate-600 mb-4">{connectionError || error?.message}</p>
           <button
             onClick={() => router.push('/')}
             className="px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-all"

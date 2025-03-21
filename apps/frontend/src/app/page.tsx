@@ -48,6 +48,7 @@ export default function Home() {
 
       // Close modal before redirect
       setIsCreateModalOpen(false);
+      // THIS IS WHERE WE REDIRECT TO /LOBBY/CODE
       router.push(`/lobby/${lobby.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create lobby');
@@ -91,6 +92,7 @@ export default function Home() {
 
       // Close modal before redirect
       setIsJoinModalOpen(false);
+      // THIS IS WHERE WE REDIRECT TO /LOBBY/CODE
       router.push(`/lobby/${lobby.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join lobby');
@@ -114,8 +116,7 @@ export default function Home() {
             <span className="text-[#4F46E5]">master</span>
           </h1>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-            Unleash your creativity with the original AI image prompt-guessing
-            game
+            Unleash your creativity with the original AI image prompt-guessing game
           </p>
         </div>
 
@@ -156,9 +157,7 @@ export default function Home() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md m-4">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-[#1E293B]">
-                Create a Lobby
-              </h2>
+              <h2 className="text-2xl font-bold text-[#1E293B]">Create a Lobby</h2>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600"
@@ -169,10 +168,7 @@ export default function Home() {
             </div>
             <form onSubmit={handleCreate}>
               <div className="mb-4">
-                <label
-                  htmlFor="createName"
-                  className="block text-sm font-medium text-slate-600 mb-2"
-                >
+                <label htmlFor="createName" className="block text-sm font-medium text-slate-600 mb-2">
                   Your Name
                 </label>
                 <input
@@ -188,11 +184,7 @@ export default function Home() {
                   disabled={isLoading}
                 />
               </div>
-              {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
+              {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -239,9 +231,7 @@ export default function Home() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md m-4">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-[#1E293B]">
-                Join a Lobby
-              </h2>
+              <h2 className="text-2xl font-bold text-[#1E293B]">Join a Lobby</h2>
               <button
                 onClick={() => setIsJoinModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600"
@@ -252,10 +242,7 @@ export default function Home() {
             </div>
             <form onSubmit={handleJoin}>
               <div className="mb-4">
-                <label
-                  htmlFor="lobbyCode"
-                  className="block text-sm font-medium text-slate-600 mb-2"
-                >
+                <label htmlFor="lobbyCode" className="block text-sm font-medium text-slate-600 mb-2">
                   Lobby Code
                 </label>
                 <input
@@ -273,10 +260,7 @@ export default function Home() {
                 />
               </div>
               <div className="mb-4">
-                <label
-                  htmlFor="joinName"
-                  className="block text-sm font-medium text-slate-600 mb-2"
-                >
+                <label htmlFor="joinName" className="block text-sm font-medium text-slate-600 mb-2">
                   Your Name
                 </label>
                 <input
@@ -292,11 +276,7 @@ export default function Home() {
                   disabled={isLoading}
                 />
               </div>
-              {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                  {error}
-                </div>
-              )}
+              {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">{error}</div>}
               <button
                 type="submit"
                 disabled={isLoading}

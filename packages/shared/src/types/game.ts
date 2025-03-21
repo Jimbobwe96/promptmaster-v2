@@ -94,11 +94,7 @@ export interface ServerToClientEvents {
   'game:prompt_submitted': (prompterId: string) => void;
   'game:request_draft': () => void;
   'game:image_generated': (imageUrl: string) => void;
-  'game:guessing_started': (data: {
-    imageUrl: string;
-    timeLimit: number;
-    endTime: number;
-  }) => void;
+  'game:guessing_started': (data: { imageUrl: string; timeLimit: number; endTime: number }) => void;
   'game:guess_submitted': (playerId: string) => void;
   'game:request_guess_draft': () => void;
   'game:round_ended': (roundResults: GameRound) => void;
@@ -143,17 +139,10 @@ export interface LobbySession {
 // Status Types
 export type LobbyStatus =
   | 'waiting' // Players can join, game hasn't started
-  | 'starting' // Brief transition state when game is being initialized
   | 'playing' // Game is in progress
-  | 'finished' // Game has ended
   | 'inactive'; // Lobby timed out or manually closed
 
-export type RoundStatus =
-  | 'prompting'
-  | 'generating'
-  | 'guessing'
-  | 'scoring'
-  | 'results';
+export type RoundStatus = 'prompting' | 'generating' | 'guessing' | 'scoring' | 'results';
 
 // Error Types
 export type LobbyErrorType =

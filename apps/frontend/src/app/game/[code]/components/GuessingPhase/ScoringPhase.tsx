@@ -3,12 +3,7 @@ export const ScoringPhase = () => {
     <div className="w-full max-w-2xl mx-auto">
       <div className="bg-white rounded-xl p-6 shadow-sm text-center">
         <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-8 h-8 text-indigo-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -17,9 +12,7 @@ export const ScoringPhase = () => {
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-slate-800 mb-2">
-          Scoring Guesses
-        </h2>
+        <h2 className="text-xl font-semibold text-slate-800 mb-2">Scoring Guesses</h2>
         <p className="text-slate-600">Calculating results...</p>
       </div>
     </div>

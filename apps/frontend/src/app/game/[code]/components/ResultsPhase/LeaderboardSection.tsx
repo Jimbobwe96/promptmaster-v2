@@ -26,9 +26,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
   readyPlayers,
   readyPhaseEndTime
 }) => {
-  const [activePlayerId, setActivePlayerId] = React.useState<string | null>(
-    null
-  );
+  const [activePlayerId, setActivePlayerId] = React.useState<string | null>(null);
   const { socket, emit } = useSocket();
 
   const isReady = socket?.id ? readyPlayers.includes(socket.id) : false;
@@ -61,8 +59,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
   };
 
   const getPositionIndicator = (currentPosition: number, playerId: string) => {
-    const roundScore =
-      roundScores.find((s) => s.playerId === playerId)?.score || 0;
+    const roundScore = roundScores.find((s) => s.playerId === playerId)?.score || 0;
     const change = roundScore > 50 ? 1 : roundScore > 30 ? 0 : -1;
 
     if (change === 0) {
@@ -74,9 +71,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
     }
 
     return (
-      <div
-        className={`flex items-center gap-1 ${change > 0 ? 'text-emerald-600' : 'text-red-600'}`}
-      >
+      <div className={`flex items-center gap-1 ${change > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
         <svg
           width="12"
           height="12"
@@ -96,9 +91,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
         <div className="space-y-3">
           {rankedScores.map((score, index) => {
             const player = players.find((p) => p.id === score.playerId);
-            const roundScore =
-              roundScores.find((s) => s.playerId === score.playerId)?.score ||
-              0;
+            const roundScore = roundScores.find((s) => s.playerId === score.playerId)?.score || 0;
             const guess = guesses.find((g) => g.playerId === score.playerId);
             const isActive = activePlayerId === score.playerId;
             const isPrompter = score.playerId === prompterId;
@@ -111,22 +104,16 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
                   className={`relative flex items-center p-4 border rounded-lg shadow-sm 
                               ${getRankStyles(index)}
                               ${guess ? 'cursor-pointer hover:border-indigo-200' : ''}`}
-                  onMouseEnter={() =>
-                    guess && setActivePlayerId(score.playerId)
-                  }
+                  onMouseEnter={() => guess && setActivePlayerId(score.playerId)}
                   onMouseLeave={() => setActivePlayerId(null)}
                 >
                   <div className="flex items-center gap-2 w-20">
-                    <span className="font-medium text-slate-600">
-                      #{index + 1}
-                    </span>
+                    <span className="font-medium text-slate-600">#{index + 1}</span>
                     {getPositionIndicator(index + 1, score.playerId)}
                   </div>
 
                   <div className="flex-1">
-                    <div className="font-medium text-slate-800">
-                      {player.username}
-                    </div>
+                    <div className="font-medium text-slate-800">{player.username}</div>
                     {isPrompter ? (
                       <div className="text-xs">
                         <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-medium">
@@ -134,26 +121,17 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
                         </span>
                       </div>
                     ) : (
-                      <div className="text-sm text-slate-500">
-                        +{roundScore} this round
-                      </div>
+                      <div className="text-sm text-slate-500">+{roundScore} this round</div>
                     )}
                   </div>
 
-                  <div className="text-2xl font-semibold text-slate-800">
-                    {score.totalScore}
-                  </div>
+                  <div className="text-2xl font-semibold text-slate-800">{score.totalScore}</div>
 
                   {index < 3 && isLastRound && (
                     <div
                       className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg text-lg"
                       style={{
-                        background:
-                          index === 0
-                            ? '#FFD700'
-                            : index === 1
-                              ? '#C0C0C0'
-                              : '#CD7F32'
+                        background: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32'
                       }}
                     >
                       {index === 0 ? '👑' : '🏅'}
@@ -164,15 +142,9 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
                 {isActive && guess && (
                   <div className="absolute z-10 right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+1rem)] w-48 p-3 bg-white rounded-lg shadow-lg">
                     <div className="text-center mb-2">
-                      <div
-                        className={`text-sm font-medium ${getScoreColor(guess.score)}`}
-                      >
-                        {guess.score}% Match
-                      </div>
+                      <div className={`text-sm font-medium ${getScoreColor(guess.score)}`}>{guess.score}% Match</div>
                     </div>
-                    <p className="text-slate-600 text-sm italic">
-                      &ldquo;{guess.guess}&rdquo;
-                    </p>
+                    <p className="text-slate-600 text-sm italic">&ldquo;{guess.guess}&rdquo;</p>
                     <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 rotate-45 bg-white" />
                   </div>
                 )}

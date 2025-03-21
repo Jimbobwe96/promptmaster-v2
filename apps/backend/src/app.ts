@@ -12,9 +12,7 @@ import lobbyRoutes from './routes/lobby';
 const app = express();
 
 const corsOptions: CorsOptions = {
-  origin: [process.env.FRONTEND_URL || 'http://localhost:3000'].filter(
-    (url): url is string => !!url
-  ),
+  origin: [process.env.FRONTEND_URL || 'http://localhost:3000'].filter((url): url is string => !!url),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type']

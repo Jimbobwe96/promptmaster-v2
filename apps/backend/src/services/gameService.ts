@@ -37,11 +37,7 @@ export class GameService {
     }
   }
 
-  private setActiveTimer(
-    lobbyCode: string,
-    timer: NodeJS.Timeout,
-    phase: string
-  ): void {
+  private setActiveTimer(lobbyCode: string, timer: NodeJS.Timeout, phase: string): void {
     this.clearActiveTimer(lobbyCode);
     console.log(`Setting new ${phase} timer for lobby ${lobbyCode}`);
     this.activeGameTimers.set(lobbyCode, timer);
@@ -78,9 +74,7 @@ export class GameService {
   private async isGameComplete(gameState: GameState): Promise<boolean> {
     try {
       const totalRoundsPlayed = gameState.rounds.length;
-      const roundsPerPlayer = await this.getRoundsPerPlayer(
-        gameState.lobbyCode
-      );
+      const roundsPerPlayer = await this.getRoundsPerPlayer(gameState.lobbyCode);
       const expectedRounds = gameState.prompterOrder.length * roundsPerPlayer;
       return totalRoundsPlayed >= expectedRounds;
     } catch (error) {
@@ -101,12 +95,8 @@ export class GameService {
       const lobby: Lobby = JSON.parse(lobbyData);
       console.log('Found lobby data:', lobby);
 
-      const connectedPlayers = lobby.players.filter(
-        (player) => player.connected
-      );
-      const prompterOrder = this.shuffleArray(
-        connectedPlayers.map((p) => p.id)
-      );
+      const connectedPlayers = lobby.players.filter((player) => player.connected);
+      const prompterOrder = this.shuffleArray(connectedPlayers.map((p) => p.id));
       console.log('Shuffled prompter order:', prompterOrder);
 
       const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
@@ -141,15 +131,9 @@ export class GameService {
       this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', firstRound);
       console.log('Emitted game:round_started event');
 
-      const timer = setTimeout(
-        () => this.handlePromptTimeout(lobbyCode),
-        lobby.settings.timeLimit * 1000
-      );
+      const timer = setTimeout(() => this.handlePromptTimeout(lobbyCode), lobby.settings.timeLimit * 1000);
       this.activeGameTimers.set(lobbyCode, timer);
-      console.log(
-        'Started prompt timer, ending at',
-        new Date(endTime).toISOString()
-      );
+      console.log('Started prompt timer, ending at', new Date(endTime).toISOString());
 
       return gameState;
     } catch (error) {
@@ -168,10 +152,7 @@ export class GameService {
     if (!lobbyData) throw new Error('Lobby not found');
     const lobby: Lobby = JSON.parse(lobbyData);
 
-    const currentPrompterId =
-      gameState.prompterOrder[
-        gameState.rounds.length % gameState.prompterOrder.length
-      ];
+    const currentPrompterId = gameState.prompterOrder[gameState.rounds.length % gameState.prompterOrder.length];
 
     const connectedPlayers = lobby.players.filter((p) => p.connected);
 
@@ -216,26 +197,17 @@ export class GameService {
 
       this.io.to(`lobby:${lobbyCode}`).emit('game:round_started', currentRound);
 
-      const timer = setTimeout(
-        () => this.handlePromptTimeout(lobbyCode),
-        lobby.settings.timeLimit * 1000
-      );
+      const timer = setTimeout(() => this.handlePromptTimeout(lobbyCode), lobby.settings.timeLimit * 1000);
 
       this.activeGameTimers.set(lobbyCode, timer);
-      console.log(
-        `Started prompt timer, ending at ${new Date(endTime).toISOString()}`
-      );
+      console.log(`Started prompt timer, ending at ${new Date(endTime).toISOString()}`);
     } catch (error) {
       console.error('Error starting prompt timer:', error);
       throw error;
     }
   }
 
-  async handlePromptSubmission(
-    lobbyCode: string,
-    playerId: string,
-    prompt: string
-  ): Promise<void> {
+  async handlePromptSubmission(lobbyCode: string, playerId: string, prompt: string): Promise<void> {
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
@@ -309,13 +281,9 @@ export class GameService {
         const updatedGameState = await this.getGameState(lobbyCode);
         if (!updatedGameState) throw new Error('Game not found');
 
-        const updatedRound =
-          updatedGameState.rounds[updatedGameState.rounds.length - 1];
+        const updatedRound = updatedGameState.rounds[updatedGameState.rounds.length - 1];
 
-        if (
-          updatedRound.status === 'generating' &&
-          updatedRound.prompterId === currentRound.prompterId
-        ) {
+        if (updatedRound.status === 'generating' && updatedRound.prompterId === currentRound.prompterId) {
           if (draft?.trim()) {
             console.log(`Received valid draft prompt: "${draft}"`);
             await this.processPrompt(lobbyCode, draft.trim());
@@ -324,21 +292,14 @@ export class GameService {
             await this.startNewRound(lobbyCode);
           }
         } else {
-          console.log(
-            'Round status changed while waiting for draft, continuing...'
-          );
+          console.log('Round status changed while waiting for draft, continuing...');
         }
       } catch (error) {
         console.error('Error handling draft request:', error);
 
         const finalCheckGameState = await this.getGameState(lobbyCode);
-        if (
-          finalCheckGameState?.rounds[finalCheckGameState.rounds.length - 1]
-            .status === 'prompting'
-        ) {
-          console.log(
-            'Error occurred and still in prompting phase, skipping round'
-          );
+        if (finalCheckGameState?.rounds[finalCheckGameState.rounds.length - 1].status === 'prompting') {
+          console.log('Error occurred and still in prompting phase, skipping round');
           await this.startNewRound(lobbyCode);
         }
       }
@@ -350,10 +311,7 @@ export class GameService {
     }
   }
 
-  private async processPrompt(
-    lobbyCode: string,
-    prompt: string
-  ): Promise<void> {
+  private async processPrompt(lobbyCode: string, prompt: string): Promise<void> {
     const gameState = await this.getGameState(lobbyCode);
     if (!gameState) throw new Error('Game not found');
 
@@ -364,9 +322,7 @@ export class GameService {
 
     await this.updateGameState(gameState);
 
-    this.io
-      .to(`lobby:${lobbyCode}`)
-      .emit('game:prompt_submitted', currentRound.prompterId);
+    this.io.to(`lobby:${lobbyCode}`).emit('game:prompt_submitted', currentRound.prompterId);
 
     try {
       const imageUrl = await this.generateImage(prompt);
@@ -436,8 +392,7 @@ export class GameService {
         prompterId: currentRound.prompterId,
         expectedGuessCount: currentRound.expectedGuessCount
       });
-      if (!currentRound.imageUrl)
-        throw new Error('No image generated for guessing phase');
+      if (!currentRound.imageUrl) throw new Error('No image generated for guessing phase');
 
       const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
       if (!lobbyData) throw new Error('Lobby not found');
@@ -445,10 +400,7 @@ export class GameService {
 
       const endTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
 
-      const timer = setTimeout(
-        () => this.handleGuessTimeout(lobbyCode),
-        lobby.settings.timeLimit * 1000
-      );
+      const timer = setTimeout(() => this.handleGuessTimeout(lobbyCode), lobby.settings.timeLimit * 1000);
 
       this.activeGameTimers.set(lobbyCode, timer);
 
@@ -463,11 +415,7 @@ export class GameService {
     }
   }
 
-  async handleGuessSubmission(
-    lobbyCode: string,
-    playerId: string,
-    guess: string
-  ): Promise<void> {
+  async handleGuessSubmission(lobbyCode: string, playerId: string, guess: string): Promise<void> {
     try {
       const gameState = await this.getGameState(lobbyCode);
       if (!gameState) throw new Error('Game not found');
@@ -506,9 +454,7 @@ export class GameService {
       const isLastGuess = currentRound.guesses.length >= expectedGuessCount;
 
       if (isLastGuess) {
-        console.log(
-          `[${lobbyCode}] Final guess received, transitioning to scoring`
-        );
+        console.log(`[${lobbyCode}] Final guess received, transitioning to scoring`);
 
         // 1. Clear the guessing timer FIRST
         this.clearActiveTimer(lobbyCode);
@@ -542,9 +488,7 @@ export class GameService {
 
       const currentRound = gameState.rounds[gameState.rounds.length - 1];
       if (currentRound.status !== 'guessing') {
-        console.log(
-          `[${lobbyCode}] Ignoring guess timeout - round is in ${currentRound.status} phase`
-        );
+        console.log(`[${lobbyCode}] Ignoring guess timeout - round is in ${currentRound.status} phase`);
         return;
       }
 
@@ -560,45 +504,41 @@ export class GameService {
           !currentRound.guesses.some((g) => g.playerId === player.id)
       );
 
-      console.log(
-        `[${lobbyCode}] Requesting drafts from ${pendingGuessers.length} players`
-      );
+      console.log(`[${lobbyCode}] Requesting drafts from ${pendingGuessers.length} players`);
 
       // Request and collect drafts from all pending guessers
       const draftPromises = pendingGuessers.map((player) => {
-        return new Promise<{ playerId: string; guess: string | null }>(
-          (resolve) => {
-            const cleanupFunctions: Array<() => void> = [];
+        return new Promise<{ playerId: string; guess: string | null }>((resolve) => {
+          const cleanupFunctions: Array<() => void> = [];
 
-            // Set up draft handler
-            const draftHandler = (draft: string) => {
-              resolve({ playerId: player.id, guess: draft.trim() });
-            };
+          // Set up draft handler
+          const draftHandler = (draft: string) => {
+            resolve({ playerId: player.id, guess: draft.trim() });
+          };
 
-            const socket = this.io.sockets.sockets.get(player.id);
-            if (socket) {
-              socket.once('game:submit_guess_draft', draftHandler);
-              cleanupFunctions.push(() => {
-                socket.removeListener('game:submit_guess_draft', draftHandler);
-              });
-
-              // Request the draft
-              socket.emit('game:request_guess_draft');
-            }
-
-            // Set timeout for each draft request
-            const timer = setTimeout(() => {
-              resolve({ playerId: player.id, guess: null });
-            }, 1000);
-
-            cleanupFunctions.push(() => clearTimeout(timer));
-
-            // Clean up when promise resolves
-            Promise.resolve().finally(() => {
-              cleanupFunctions.forEach((cleanup) => cleanup());
+          const socket = this.io.sockets.sockets.get(player.id);
+          if (socket) {
+            socket.once('game:submit_guess_draft', draftHandler);
+            cleanupFunctions.push(() => {
+              socket.removeListener('game:submit_guess_draft', draftHandler);
             });
+
+            // Request the draft
+            socket.emit('game:request_guess_draft');
           }
-        );
+
+          // Set timeout for each draft request
+          const timer = setTimeout(() => {
+            resolve({ playerId: player.id, guess: null });
+          }, 1000);
+
+          cleanupFunctions.push(() => clearTimeout(timer));
+
+          // Clean up when promise resolves
+          Promise.resolve().finally(() => {
+            cleanupFunctions.forEach((cleanup) => cleanup());
+          });
+        });
       });
 
       // Wait for all drafts (or timeouts)
@@ -646,9 +586,7 @@ export class GameService {
 
       // Defensive guard
       if (currentRound.status !== 'scoring') {
-        console.error(
-          `[${lobbyCode}] Invalid phase transition to scoring. Current status: ${currentRound.status}`
-        );
+        console.error(`[${lobbyCode}] Invalid phase transition to scoring. Current status: ${currentRound.status}`);
         return;
       }
 
@@ -666,9 +604,7 @@ export class GameService {
 
       // Update total scores for each player
       currentRound.guesses.forEach((guess) => {
-        const playerScore = gameState.scores.find(
-          (s) => s.playerId === guess.playerId
-        );
+        const playerScore = gameState.scores.find((s) => s.playerId === guess.playerId);
         if (playerScore && guess.score !== undefined) {
           playerScore.totalScore += guess.score;
         }
@@ -681,9 +617,7 @@ export class GameService {
       const timer = setTimeout(() => this.startResultsPhase(lobbyCode), 3000);
       this.setActiveTimer(lobbyCode, timer, 'scoring');
 
-      console.log(
-        `[${lobbyCode}] Scoring complete, transitioning to results soon...`
-      );
+      console.log(`[${lobbyCode}] Scoring complete, transitioning to results soon...`);
     } catch (error) {
       console.error(`[${lobbyCode}] Error in scoring phase:`, error);
 
@@ -701,9 +635,7 @@ export class GameService {
 
           // Update total scores
           currentRound.guesses.forEach((guess) => {
-            const playerScore = gameState.scores.find(
-              (s) => s.playerId === guess.playerId
-            );
+            const playerScore = gameState.scores.find((s) => s.playerId === guess.playerId);
             if (playerScore && guess.score !== undefined) {
               playerScore.totalScore += guess.score;
             }
@@ -712,19 +644,13 @@ export class GameService {
           await this.updateGameState(gameState);
 
           // Still try to transition to results
-          const timer = setTimeout(
-            () => this.startResultsPhase(lobbyCode),
-            3000
-          );
+          const timer = setTimeout(() => this.startResultsPhase(lobbyCode), 3000);
           this.setActiveTimer(lobbyCode, timer, 'scoring');
 
           return;
         }
       } catch (recoveryError) {
-        console.error(
-          `[${lobbyCode}] Failed to recover from scoring error:`,
-          recoveryError
-        );
+        console.error(`[${lobbyCode}] Failed to recover from scoring error:`, recoveryError);
       }
 
       // If all else fails, start a new round
@@ -732,10 +658,7 @@ export class GameService {
     }
   }
 
-  private async scoreGuesses(
-    originalPrompt: string,
-    guesses: string[]
-  ): Promise<number[]> {
+  private async scoreGuesses(originalPrompt: string, guesses: string[]): Promise<number[]> {
     console.log('in scoreGuesses method');
     try {
       const openai = new OpenAI({
@@ -822,10 +745,7 @@ export class GameService {
       await this.broadcastReadyState(lobbyCode);
 
       // Set timeout for ready phase
-      const timer = setTimeout(
-        () => this.handleReadyPhaseTimeout(lobbyCode),
-        RESULTS_DISPLAY_TIME
-      );
+      const timer = setTimeout(() => this.handleReadyPhaseTimeout(lobbyCode), RESULTS_DISPLAY_TIME);
       this.setActiveTimer(lobbyCode, timer, 'ready');
     } catch (error) {
       console.error('Error starting results phase:', error);

@@ -8,12 +8,7 @@ interface ImageSectionProps {
   players: Player[];
 }
 
-export const ImageSection: React.FC<ImageSectionProps> = ({
-  imageUrl,
-  prompt,
-  prompterId,
-  players
-}) => {
+export const ImageSection: React.FC<ImageSectionProps> = ({ imageUrl, prompt, prompterId, players }) => {
   const prompter = players.find((p) => p.id === prompterId);
 
   return (
@@ -21,18 +16,12 @@ export const ImageSection: React.FC<ImageSectionProps> = ({
       {/* Image */}
       <div className="max-w-xl mx-auto">
         {' '}
-        <img
-          src={imageUrl}
-          alt="AI Generated"
-          className="w-full aspect-[4/3] object-cover rounded-lg mb-4"
-        />
+        <img src={imageUrl} alt="AI Generated" className="w-full aspect-[4/3] object-cover rounded-lg mb-4" />
       </div>
 
       {/* Prompt */}
       <div className="text-center">
-        <h3 className="text-lg font-medium text-slate-800 mb-2">
-          {prompter?.username}&apos;s prompt
-        </h3>
+        <h3 className="text-lg font-medium text-slate-800 mb-2">{prompter?.username}&apos;s prompt</h3>
         <p className="text-slate-600 italic text-lg">&ldquo;{prompt}&rdquo;</p>
       </div>
     </div>

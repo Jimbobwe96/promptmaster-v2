@@ -9,11 +9,7 @@ interface ResultsPhaseProps {
   onNextRound?: () => void;
 }
 
-export const ResultsPhase: React.FC<ResultsPhaseProps> = ({
-  results,
-  players,
-  onNextRound
-}) => {
+export const ResultsPhase: React.FC<ResultsPhaseProps> = ({ results, players, onNextRound }) => {
   return (
     <div className="w-full max-w-6xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">

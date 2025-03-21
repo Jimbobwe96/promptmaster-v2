@@ -11,14 +11,7 @@ interface LobbySettingsProps {
   onLeave: () => void;
 }
 
-export const LobbySettings = ({
-  settings,
-  playerIsHost,
-  canStart,
-  onStart,
-  onUpdate,
-  onLeave
-}: LobbySettingsProps) => {
+export const LobbySettings = ({ settings, playerIsHost, canStart, onStart, onUpdate, onLeave }: LobbySettingsProps) => {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const handleRoundsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,20 +31,14 @@ export const LobbySettings = ({
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-800 mb-6">
-        Game Settings
-      </h2>
+      <h2 className="text-lg font-semibold text-slate-800 mb-6">Game Settings</h2>
 
       <div className="space-y-6">
         {/* Rounds per Player */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <label className="text-sm font-medium text-slate-700">
-              Rounds per Player
-            </label>
-            <span className="text-sm font-medium text-slate-900">
-              {settings.roundsPerPlayer}
-            </span>
+            <label className="text-sm font-medium text-slate-700">Rounds per Player</label>
+            <span className="text-sm font-medium text-slate-900">{settings.roundsPerPlayer}</span>
           </div>
           <input
             type="range"
@@ -61,23 +48,15 @@ export const LobbySettings = ({
             onChange={handleRoundsChange}
             disabled={!playerIsHost}
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
-              ${
-                playerIsHost
-                  ? 'bg-slate-200 range-input-host'
-                  : 'bg-slate-100 cursor-not-allowed'
-              }`}
+              ${playerIsHost ? 'bg-slate-200 range-input-host' : 'bg-slate-100 cursor-not-allowed'}`}
           />
         </div>
 
         {/* Time Limit */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <label className="text-sm font-medium text-slate-700">
-              Time Limit
-            </label>
-            <span className="text-sm font-medium text-slate-900">
-              {settings.timeLimit}s
-            </span>
+            <label className="text-sm font-medium text-slate-700">Time Limit</label>
+            <span className="text-sm font-medium text-slate-900">{settings.timeLimit}s</span>
           </div>
           <input
             type="range"
@@ -87,11 +66,7 @@ export const LobbySettings = ({
             onChange={handleTimeLimitChange}
             disabled={!playerIsHost}
             className={`w-full h-2 rounded-lg appearance-none cursor-pointer
-              ${
-                playerIsHost
-                  ? 'bg-slate-200 range-input-host'
-                  : 'bg-slate-100 cursor-not-allowed'
-              }`}
+              ${playerIsHost ? 'bg-slate-200 range-input-host' : 'bg-slate-100 cursor-not-allowed'}`}
           />
           <div className="flex justify-between text-xs text-slate-500">
             <span>{LOBBY_CONSTRAINTS.MIN_TIME_LIMIT}s</span>
@@ -100,11 +75,7 @@ export const LobbySettings = ({
         </div>
 
         {/* Control messages */}
-        {!playerIsHost && (
-          <p className="text-sm text-slate-500 italic mb-6">
-            Only the host can modify game settings
-          </p>
-        )}
+        {!playerIsHost && <p className="text-sm text-slate-500 italic mb-6">Only the host can modify game settings</p>}
 
         {/* Start Game Button */}
         <div className="pt-4 border-t border-slate-200">
@@ -125,27 +96,19 @@ export const LobbySettings = ({
               !canStart ? (
                 <>
                   <span className="block text-lg">Waiting for Players</span>
-                  <span className="block text-sm opacity-75">
-                    Need at least 2 players to start
-                  </span>
+                  <span className="block text-sm opacity-75">Need at least 2 players to start</span>
                 </>
               ) : (
                 <>
                   <span className="block text-lg">Start Game</span>
-                  <span className="block text-sm opacity-75">
-                    All players are ready
-                  </span>
+                  <span className="block text-sm opacity-75">All players are ready</span>
                 </>
               )
             ) : (
               <>
-                <span className="block text-lg">
-                  {canStart ? 'Waiting for Host' : 'Waiting for Players'}
-                </span>
+                <span className="block text-lg">{canStart ? 'Waiting for Host' : 'Waiting for Players'}</span>
                 <span className="block text-sm opacity-75">
-                  {canStart
-                    ? 'Game will start soon'
-                    : 'Need at least 2 players to start'}
+                  {canStart ? 'Game will start soon' : 'Need at least 2 players to start'}
                 </span>
               </>
             )}

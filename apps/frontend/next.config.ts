@@ -6,10 +6,7 @@ const nextConfig = {
   async rewrites() {
     // In development, use localhost
     // In production (Docker), use service name
-    const backendUrl =
-      process.env.NODE_ENV === 'development'
-        ? 'http://localhost:4000'
-        : 'http://backend:4000';
+    const backendUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:4000' : 'http://backend:4000';
 
     return [
       {

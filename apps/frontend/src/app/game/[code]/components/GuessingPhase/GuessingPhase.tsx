@@ -13,9 +13,7 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
   ({ round, currentPlayerId, onGuessSubmit }, ref) => {
     console.log('Phase endTime:', round.endTime);
     const isPrompter = round.prompterId === currentPlayerId;
-    const hasGuessed = round.guesses.some(
-      (g) => g.playerId === currentPlayerId
-    );
+    const hasGuessed = round.guesses.some((g) => g.playerId === currentPlayerId);
 
     if (!round.endTime) {
       console.log('No endTime available for round');
@@ -38,23 +36,12 @@ export const GuessingPhase = forwardRef<GuessInputHandle, GuessingPhaseProps>(
           />
         ) : hasGuessed ? (
           <div className="bg-white rounded-xl p-6 shadow-sm text-center">
-            <img
-              src={round.imageUrl}
-              alt="AI Generated"
-              className="w-full h-64 object-cover rounded-lg mb-4"
-            />
+            <img src={round.imageUrl} alt="AI Generated" className="w-full h-64 object-cover rounded-lg mb-4" />
 
-            <p className="text-slate-600">
-              Guess submitted! Waiting for other players...
-            </p>
+            <p className="text-slate-600">Guess submitted! Waiting for other players...</p>
           </div>
         ) : (
-          <GuessInput
-            ref={ref}
-            endTime={round.endTime}
-            imageUrl={round.imageUrl}
-            onSubmit={onGuessSubmit}
-          />
+          <GuessInput ref={ref} endTime={round.endTime} imageUrl={round.imageUrl} onSubmit={onGuessSubmit} />
         )}
       </div>
     );
