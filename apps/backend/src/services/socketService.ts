@@ -112,11 +112,6 @@ export class SocketService {
     await redisClient.setEx(`lobby:${lobby.code}`, 24 * 60 * 60, JSON.stringify(lobby));
   }
 
-  private async verifyUsernameReservation(code: string, username: string): Promise<boolean> {
-    const reservation = await redisClient.get(`lobby:${code}:username:${username}`);
-    return reservation === 'reserved';
-  }
-
   private setupEventHandlers(): void {
     this.io.on('connection', async (socket: SocketWithData) => {
       console.log(`Socket connected: ${socket.id}`);

@@ -56,21 +56,19 @@ const createLobbyHandler: RequestHandler<{}, {}, CreateLobbyBody> = async (req, 
         }
       ],
       settings: {
-        roundsPerPlayer: 2,
+        roundsPerPlayer: 2, // import default settings here? optional
         timeLimit: 30
       },
       status: 'waiting',
       createdAt: new Date()
     };
 
+    // store lobby
     await redisClient.setEx(`lobby:${code}`, 24 * 60 * 60, JSON.stringify(lobby));
-
-    await redisClient.setEx(`lobby:${code}:username:${username}`, 5 * 60, 'reserved');
 
     // Remove return
     res.status(201).json({
       code
-      // isHost: true
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -133,13 +131,11 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (req, res)
       JSON.stringify(lobby)
     );
 
-    // Reserve username (keeping this from original)
-    // TODO: investigate username 'reservations' with i dont fw
-    await redisClient.setEx(`lobby:${code}:username:${username}`, 5 * 60, 'reserved');
+    // reserve username (not anymore)
+    // await redisClient.setEx(`lobby:${code}:username:${username}`, 5 * 60, 'reserved');
 
     res.status(200).json({
       code
-      // isHost: false
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
