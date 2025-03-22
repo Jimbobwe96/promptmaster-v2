@@ -20,6 +20,16 @@ export interface Lobby {
   createdAt: Date; // For potential lobby lifetime limiting
 }
 
+export interface Lobby2 {
+  code: string; // 6-digit unique code
+  gameState: GameState2;
+  hostUsername: string; // Username of host
+  players: Player[];
+  settings: LobbySettings;
+  status: LobbyStatus;
+  createdAt: Date; // For potential lobby lifetime limiting
+}
+
 // Game State Types
 export interface GameRound {
   prompterId: string;
@@ -38,6 +48,22 @@ export interface GameRound {
   nextRoundTime?: number;
   readyPlayers: string[];
   readyPhaseEndTime?: number;
+}
+
+export interface GameRound2 {
+  phase: RoundStatus;
+  phaseEndTime: number;
+  prompterUsername: string;
+  prompt?: string;
+  imageUrl?: string;
+  guesses: {
+    username: string;
+    guess: string;
+    submittedAt: Date;
+    score?: number;
+  }[];
+  expectedGuessCount: number;
+  readyPlayers: string[];
 }
 
 export interface RoundResults {
@@ -69,6 +95,15 @@ export interface RoundResults {
 export interface GameState {
   lobbyCode: string;
   rounds: GameRound[];
+  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
+  scores: {
+    playerId: string;
+    totalScore: number;
+  }[];
+}
+
+export interface GameState2 {
+  rounds: GameRound2[];
   prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
   scores: {
     playerId: string;
