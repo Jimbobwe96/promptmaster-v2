@@ -6,9 +6,19 @@ export interface Player {
   lastSeen?: Date; // For tracking disconnections (30 second window)
 }
 
-export interface LobbySettings {
-  roundsPerPlayer: number; // 1-4 rounds
-  timeLimit: number; // 5-30 seconds for prompting/guessing
+export interface LobbySession {
+  code: string;
+  username: string;
+  // session data will change soon
+  isHost: boolean;
+  joinedAt: string;
+}
+
+export interface SessionData {
+  lobbyCode: string;
+  username: string;
+  socketId: string; // this is how we know they were actually connected upon reconnection
+  joinedAt: string;
 }
 
 export interface Lobby {
@@ -20,14 +30,45 @@ export interface Lobby {
   createdAt: Date; // For potential lobby lifetime limiting
 }
 
+// new lobby: lobby has gameState, which has rounds.
+// host is identified by username, not id
 export interface Lobby2 {
-  code: string; // 6-digit unique code
-  gameState: GameState2;
-  hostUsername: string; // Username of host
+  lobbyCode: string; // 6-digit unique code
+  gameState?: GameState2;
+  hostUsername: string;
   players: Player[];
   settings: LobbySettings;
   status: LobbyStatus;
   createdAt: Date; // For potential lobby lifetime limiting
+}
+
+export interface LobbySettings {
+  roundsPerPlayer: number; // 1-4 rounds
+  timeLimit: number; // 5-30 seconds for prompting/guessing
+}
+
+export type LobbyStatus =
+  | 'waiting' // Players can join, game hasn't started
+  | 'playing' // Game is in progress
+  | 'inactive'; // Lobby timed out or manually closed
+
+export interface GameState {
+  lobbyCode: string;
+  rounds: GameRound[];
+  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
+  scores: {
+    playerId: string;
+    totalScore: number;
+  }[];
+}
+
+export interface GameState2 {
+  rounds: GameRound2[];
+  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
+  scores: {
+    playerId: string;
+    totalScore: number;
+  }[];
 }
 
 // Game State Types
@@ -50,6 +91,7 @@ export interface GameRound {
   readyPhaseEndTime?: number;
 }
 
+// new round: consolidates phase timing, identify players by username, not id
 export interface GameRound2 {
   phase: RoundStatus;
   phaseEndTime: number;
@@ -62,10 +104,13 @@ export interface GameRound2 {
     submittedAt: Date;
     score?: number;
   }[];
-  expectedGuessCount: number;
+  expectedGuessCount?: number; // stored just before guessing phase starts
   readyPlayers: string[];
 }
 
+export type RoundStatus = 'prompting' | 'generating' | 'guessing' | 'scoring' | 'results';
+
+// GONNA GET REMOVED! hate this one
 export interface RoundResults {
   roundNumber: number; // Current round number
   imageUrl: string; // AI generated image
@@ -90,25 +135,6 @@ export interface RoundResults {
   nextRoundTime: number;
   readyPlayers: string[];
   readyPhaseEndTime: number;
-}
-
-export interface GameState {
-  lobbyCode: string;
-  rounds: GameRound[];
-  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
-  scores: {
-    playerId: string;
-    totalScore: number;
-  }[];
-}
-
-export interface GameState2 {
-  rounds: GameRound2[];
-  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
-  scores: {
-    playerId: string;
-    totalScore: number;
-  }[];
 }
 
 // Socket Event Types
@@ -162,22 +188,6 @@ export interface ClientToServerEvents {
 
   'game:mark_ready': () => void;
 }
-
-export interface LobbySession {
-  code: string;
-  username: string;
-  // session data will change soon
-  isHost: boolean;
-  joinedAt: string;
-}
-
-// Status Types
-export type LobbyStatus =
-  | 'waiting' // Players can join, game hasn't started
-  | 'playing' // Game is in progress
-  | 'inactive'; // Lobby timed out or manually closed
-
-export type RoundStatus = 'prompting' | 'generating' | 'guessing' | 'scoring' | 'results';
 
 // Error Types
 export type LobbyErrorType =
