@@ -64,6 +64,7 @@ export default function GamePage({ params }: GamePageProps) {
 
         setPlayers(lobby.players);
 
+        // why is this here? we have a listener for game:started on the lobby page that redirects us to game page
         socket?.on('game:started', (initialState: GameState) => {
           console.log('Received initial game state:', initialState);
           if (mounted) setGameState(initialState);

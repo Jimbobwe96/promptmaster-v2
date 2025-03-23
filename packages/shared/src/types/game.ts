@@ -17,8 +17,8 @@ export interface LobbySession {
 export interface SessionData {
   lobbyCode: string;
   username: string;
-  socketId: string; // this is how we know they were actually connected upon reconnection
-  joinedAt: string;
+  socketId?: string; // this is how we know they were actually connected upon reconnection
+  joinedAt: string; // not 100% sure what this is
 }
 
 export interface Lobby {
@@ -64,7 +64,8 @@ export interface GameState {
 
 export interface GameState2 {
   rounds: GameRound2[];
-  prompterOrder: string[]; // Using prompterOrder[rounds.length % prompterOrder.length] for current prompter
+  prompterOrder: string[]; // array of usernames
+  // current prompter: prompterOrder[round.length % prompterOrder.length]
   scores: {
     playerId: string;
     totalScore: number;
@@ -108,9 +109,9 @@ export interface GameRound2 {
   readyPlayers: string[];
 }
 
-export type RoundStatus = 'prompting' | 'generating' | 'guessing' | 'scoring' | 'results';
+export type RoundStatus = 'prompting' | 'generating' | 'guessing' | 'scoring' | 'results' | 'skipped';
 
-// GONNA GET REMOVED! hate this one
+// GONNA GET REMOVED! this one sucks!
 export interface RoundResults {
   roundNumber: number; // Current round number
   imageUrl: string; // AI generated image
@@ -120,10 +121,9 @@ export interface RoundResults {
     playerId: string;
     guess: string;
     submittedAt: Date;
-    score: number; // Made non-optional since this is results
+    score: number;
   }[];
   roundScores: {
-    // Added to separate round from total
     playerId: string;
     score: number;
   }[];
@@ -131,7 +131,7 @@ export interface RoundResults {
     playerId: string;
     totalScore: number;
   }[];
-  isLastRound: boolean; // Added to handle final round differently
+  isLastRound: boolean;
   nextRoundTime: number;
   readyPlayers: string[];
   readyPhaseEndTime: number;
@@ -170,6 +170,27 @@ export interface ServerToClientEvents {
   }) => void;
 }
 
+export interface ServerToClientEvents2 {
+  // Lobby Events
+  'lobby:validated': (lobby: Lobby2) => void;
+  'lobby:updated': (lobby: Lobby2) => void;
+  'lobby:error': (error: LobbyError) => void;
+
+  // could potentially be consolidated with lobby:updated; if the client doesn't see themself in the players array, they redirect home
+  // we're gonna keep em for now
+  'lobby:left': () => void;
+  'lobby:kicked': () => void;
+
+  // Game Events
+  'game:started': (lobby: Lobby2) => void; // maybe we don't need to send lobby data with this, phase_changed will handle?
+  'game:phase_changed': (lobby: Lobby2) => void;
+  'game:guess_submitted': (lobby: Lobby2) => void;
+  'game:request_prompt_draft': () => void;
+  'game:request_guess_draft': () => void;
+  'game:ready_state_update': (lobby: Lobby2) => void;
+  'game:ended': (lobby: Lobby2) => void;
+}
+
 export interface ClientToServerEvents {
   // Lobby Events
   'lobby:create': (username: string) => void;
@@ -186,6 +207,21 @@ export interface ClientToServerEvents {
   'game:submit_guess': (guess: string) => void;
   'game:submit_guess_draft': (draft: string) => void;
 
+  'game:mark_ready': () => void;
+}
+
+export interface ClientToServerEvents2 {
+  // Lobby Events
+  'lobby:validate': (data: { code: string; username: string }) => void;
+  'lobby:update_settings': (settings: Partial<LobbySettings>) => void;
+  'lobby:leave': () => void;
+  'lobby:kick_player': (playerUsername: string) => void; // kicked player's username
+
+  'lobby:start_game': () => void;
+
+  // Game Events
+  'game:submit_prompt': (prompt: string) => void;
+  'game:submit_guess': (guess: string) => void;
   'game:mark_ready': () => void;
 }
 
@@ -222,11 +258,3 @@ export const LOBBY_CONSTRAINTS = {
   MAX_TIME_LIMIT: 30,
   RECONNECTION_WINDOW: 30 // seconds
 } as const;
-
-export interface PhaseTimingData {
-  timeLimit: number;
-  endTime: number;
-}
-
-// Helper type for partial settings updates
-export type LobbySettingsUpdate = Partial<LobbySettings>;
