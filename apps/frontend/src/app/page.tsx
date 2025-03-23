@@ -22,6 +22,7 @@ export default function Home() {
 
     try {
       console.log('Attempting to create lobby...');
+      // HERES WHERE WE MAKE API CALL
       const response = await fetch('/api/lobbies/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -36,6 +37,7 @@ export default function Home() {
         throw new Error(error.message || 'Failed to create lobby');
       }
 
+      // HERES WHERE WE RECEIVE API RESPONSE
       const lobby = await response.json();
 
       // Store session data

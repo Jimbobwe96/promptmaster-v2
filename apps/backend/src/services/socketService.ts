@@ -105,6 +105,8 @@ export class SocketService {
 
   private async getLobby(code: string): Promise<Lobby | null> {
     const lobbyData = await redisClient.get(`lobby:${code}`);
+    // TODO: investigate why this is reading null from redis
+    console.log(`GOT LOBBY DATA DURING VALIDATE: ${lobbyData}`);
     return lobbyData ? JSON.parse(lobbyData) : null;
   }
 
