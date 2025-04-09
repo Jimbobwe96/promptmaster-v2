@@ -7,11 +7,9 @@ import redisClient from '../config/redis';
 export class GameService2 {
   // Class fields for managing game state
   private activeGameTimers: Map<string, NodeJS.Timeout>;
-  private activeGenerationJobs: Map<string, Promise<string>>;
 
   constructor(private io: Server) {
     this.activeGameTimers = new Map();
-    this.activeGenerationJobs = new Map();
   }
 
   // ==================== Core Infrastructure Methods ====================
@@ -446,22 +444,15 @@ export class GameService2 {
 
       // Create and store the generation promise
       const generationPromise = this.generateImage(currentRound.prompt);
-      this.activeGenerationJobs.set(lobbyCode, generationPromise);
 
       // Wait for the image to be generated
       try {
         const imageUrl = await generationPromise;
 
-        // Clean up the stored promise
-        this.activeGenerationJobs.delete(lobbyCode);
-
         // Transition to guessing phase with the image URL
         await this.transitionToPhase(lobbyCode, 'guessing', { imageUrl });
       } catch (error) {
         console.error('Image generation failed:', error);
-
-        // Clean up the stored promise
-        this.activeGenerationJobs.delete(lobbyCode);
 
         // Skip the round on failure
         await this.skipRound(lobbyCode);
@@ -521,11 +512,6 @@ export class GameService2 {
 
       // Clear any active timers
       this.clearActiveTimer(lobbyCode);
-
-      // Clear any active generation jobs
-      if (this.activeGenerationJobs.has(lobbyCode)) {
-        this.activeGenerationJobs.delete(lobbyCode);
-      }
 
       // Update lobby status
       lobby.status = 'waiting';
