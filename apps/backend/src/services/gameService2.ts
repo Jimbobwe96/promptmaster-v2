@@ -235,9 +235,11 @@ export class GameService2 {
 
         case 'results':
           // Set up ready phase
-          const RESULTS_DISPLAY_TIME = 20000; // 20 seconds
-          currentRound.phaseEndTime = this.calculatePhaseEndTime(RESULTS_DISPLAY_TIME / 1000);
-          this.startPhaseTimer(lobbyCode, 'results', RESULTS_DISPLAY_TIME / 1000);
+          {
+            const RESULTS_DISPLAY_TIME = 20000; // 20 seconds
+            currentRound.phaseEndTime = this.calculatePhaseEndTime(RESULTS_DISPLAY_TIME / 1000);
+            this.startPhaseTimer(lobbyCode, 'results', RESULTS_DISPLAY_TIME / 1000);
+          }
           break;
       }
 
