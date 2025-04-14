@@ -545,6 +545,15 @@ export class GameService2 {
     // Implement later
     console.log(`Ready phase timeout for ${lobbyCode} - not yet implemented`);
   }
+
+  // stubs
+  async handlePlayerReady(lobbyCode: string, username: string) {
+    return;
+  }
+
+  async handleGuessSubmission(lobbyCode: string, username: string, guess: string) {
+    return;
+  }
 }
 
 // import { Server } from 'socket.io';

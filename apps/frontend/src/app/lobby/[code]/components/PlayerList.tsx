@@ -4,13 +4,13 @@ import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 
 interface PlayerListProps {
   players: Player[];
-  hostId: string;
-  currentUserId: string;
-  onKickPlayer?: (playerId: string) => void;
+  hostUsername: string;
+  currentUsername: string;
+  onKickPlayer?: (username: string) => void;
 }
 
-export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: PlayerListProps) => {
-  const [kickingPlayerId, setKickingPlayerId] = useState<string | null>(null);
+export const PlayerList = ({ players, hostUsername, currentUsername, onKickPlayer }: PlayerListProps) => {
+  const [kickingUsername, setKickingUsername] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const DISCONNECT_TIMEOUT_MS = 15000;
   const [now, setNow] = useState<number>(Date.now());
@@ -41,26 +41,26 @@ export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: Pla
     return Math.max(0, Math.ceil(remaining / 1000));
   };
 
-  const handleKickClick = (playerId: string) => {
+  const handleKickClick = (username: string) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    setKickingPlayerId(playerId);
+    setKickingUsername(username);
 
     timeoutRef.current = setTimeout(() => {
-      setKickingPlayerId(null);
+      setKickingUsername(null);
       timeoutRef.current = null;
     }, 3000);
   };
 
-  const handleConfirmKick = (playerId: string) => {
+  const handleConfirmKick = (username: string) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    onKickPlayer?.(playerId);
-    setKickingPlayerId(null);
+    onKickPlayer?.(username);
+    setKickingUsername(null);
   };
 
   const handleCancelKick = () => {
@@ -68,7 +68,7 @@ export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: Pla
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    setKickingPlayerId(null);
+    setKickingUsername(null);
   };
 
   return (
@@ -82,7 +82,7 @@ export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: Pla
         </div>
         <div className="space-y-3">
           {players.map((player) => {
-            const isCurrentUser = player.id === currentUserId;
+            const isCurrentUser = player.username === currentUsername;
             const disconnectTimeMs = !player.connected ? getDisconnectTime(player.lastSeen) : 0;
             const remainingTimeSeconds = getRemainingTime(disconnectTimeMs);
 
@@ -109,7 +109,7 @@ export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: Pla
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-slate-700">{player.username}</span>
-                      {player.id === hostId && (
+                      {player.username === hostUsername && (
                         <span className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">
                           Host
                         </span>
@@ -128,12 +128,12 @@ export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: Pla
                   </div>
                 </div>
 
-                {currentUserId === hostId && player.id !== hostId && (
+                {currentUsername === hostUsername && player.username !== hostUsername && (
                   <div className="flex items-center">
-                    {kickingPlayerId === player.id ? (
+                    {kickingUsername === player.username ? (
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleConfirmKick(player.id)}
+                          onClick={() => handleConfirmKick(player.username)}
                           className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                         >
                           Confirm
@@ -147,7 +147,7 @@ export const PlayerList = ({ players, hostId, currentUserId, onKickPlayer }: Pla
                       </div>
                     ) : (
                       <button
-                        onClick={() => handleKickClick(player.id)}
+                        onClick={() => handleKickClick(player.username)}
                         className={`text-xs px-2 py-1 rounded transition-colors
                           ${
                             player.connected

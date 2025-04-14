@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const router = useRouter();
@@ -12,6 +12,60 @@ export default function Home() {
   const [lobbyCode, setLobbyCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Add state for reconnection
+  const [showReconnectModal, setShowReconnectModal] = useState(false);
+  const [reconnectData, setReconnectData] = useState<{
+    lobbyCode: string;
+    username: string;
+    lobbyStatus: 'waiting' | 'playing';
+  } | null>(null);
+
+  // Add useEffect to check for existing session
+  useEffect(() => {
+    const checkForReconnection = async () => {
+      // Find any keys that match the pattern
+      const sessionKeys = Object.keys(sessionStorage).filter((key) => key.startsWith('lobby:'));
+
+      if (sessionKeys.length === 0) return;
+
+      // Get the most recent session
+      const mostRecentKey = sessionKeys[0]; // Could sort by joinedAt if multiple exist
+      const sessionData = JSON.parse(sessionStorage.getItem(mostRecentKey) || '{}');
+
+      if (!sessionData.lobbyCode || !sessionData.username) return;
+
+      try {
+        // Verify if this session can reconnect
+        const response = await fetch('/api/lobbies/verify-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lobbyCode: sessionData.lobbyCode,
+            username: sessionData.username
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.canReconnect) {
+            // Show reconnection modal
+            setReconnectData({
+              lobbyCode: sessionData.lobbyCode,
+              username: sessionData.username,
+              lobbyStatus: data.lobbyStatus
+            });
+            setShowReconnectModal(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check reconnection status:', error);
+      }
+    };
+
+    checkForReconnection();
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +96,7 @@ export default function Home() {
 
       // Store session data
       const session = {
-        code: lobby.code,
+        lobbyCode: lobby.code,
         username: createName.trim(),
         joinedAt: new Date().toISOString()
       };
@@ -85,9 +139,8 @@ export default function Home() {
 
       // Store session data
       const session = {
-        code: lobby.code,
+        lobbyCode: lobby.code,
         username: joinName.trim(),
-        // isHost: false,
         joinedAt: new Date().toISOString()
       };
       sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
@@ -316,6 +369,52 @@ export default function Home() {
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reconnection Modal */}
+      {showReconnectModal && reconnectData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md m-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-[#1E293B]">Rejoin Session</h2>
+              <button onClick={() => setShowReconnectModal(false)} className="text-slate-400 hover:text-slate-600">
+                ✕
+              </button>
+            </div>
+            <div className="mb-6">
+              <p className="text-slate-600">
+                You were previously in a {reconnectData.lobbyStatus === 'waiting' ? 'lobby' : 'game'} as{' '}
+                {reconnectData.username}.
+              </p>
+              <p className="mt-2 text-slate-600">Would you like to rejoin {reconnectData.lobbyCode}?</p>
+            </div>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  // Navigate to the appropriate page
+                  router.push(
+                    reconnectData.lobbyStatus === 'waiting'
+                      ? `/lobby/${reconnectData.lobbyCode}`
+                      : `/game/${reconnectData.lobbyCode}`
+                  );
+                }}
+                className="flex-1 px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90"
+              >
+                Rejoin
+              </button>
+              <button
+                onClick={() => {
+                  // Clear session data and close modal
+                  sessionStorage.removeItem(`lobby:${reconnectData.lobbyCode}`);
+                  setShowReconnectModal(false);
+                }}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+              >
+                Abandon
+              </button>
+            </div>
           </div>
         </div>
       )}

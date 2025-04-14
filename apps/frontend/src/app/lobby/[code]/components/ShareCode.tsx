@@ -3,15 +3,15 @@
 import { useState } from 'react';
 
 interface ShareCodeProps {
-  code: string;
+  lobbyCode: string;
 }
 
-export function ShareCode({ code }: ShareCodeProps) {
+export function ShareCode({ lobbyCode }: ShareCodeProps) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(lobbyCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
     } catch (err) {
@@ -27,7 +27,9 @@ export function ShareCode({ code }: ShareCodeProps) {
 
       <div className="flex items-center justify-center gap-4">
         <div className="bg-slate-50 px-6 py-3 rounded-lg">
-          <span className="text-2xl font-mono font-bold tracking-wider text-[#4F46E5]">{code.split('').join(' ')}</span>
+          <span className="text-2xl font-mono font-bold tracking-wider text-[#4F46E5]">
+            {lobbyCode.split('').join(' ')}
+          </span>
         </div>
 
         <button

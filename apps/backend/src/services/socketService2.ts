@@ -101,6 +101,9 @@ export class SocketService2 {
             return;
           }
 
+          // Store previous connection state for reconnection tracking
+          const wasDisconnected = !player.connected;
+
           // Update player's socket ID and connection status
           player.id = socket.id;
           player.connected = true;
@@ -118,6 +121,11 @@ export class SocketService2 {
 
           // Broadcast update to everyone
           this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+
+          // Log reconnection
+          if (wasDisconnected) {
+            console.log(`Player ${username} reconnected to lobby ${code}`);
+          }
         } catch (error) {
           console.error('Error validating lobby connection:', error);
           this.emitError(socket, 'SERVER_ERROR', 'Failed to validate lobby connection');
@@ -441,6 +449,9 @@ export class SocketService2 {
       socket.on('disconnect', async () => {
         try {
           console.log(`Client disconnected: ${socket.id}`);
+
+          console.log('SOCKET TO LOBBY MAP:\n');
+          console.log(this.socketToLobby);
 
           // Get lobby code from our map
           const code = this.socketToLobby.get(socket.id);

@@ -3,11 +3,13 @@ dotenv.config();
 
 import express from 'express';
 import http from 'http';
-import { SocketService } from './services/socketService';
+// import { SocketService } from './services/socketService';
+import { SocketService2 } from './services/socketService2';
 import { connectRedis } from './config/redis';
 import cors from 'cors';
 import type { CorsOptions } from 'cors';
-import lobbyRoutes from './routes/lobby';
+// import lobbyRoutes from './routes/lobby';
+import lobbyRoutes from './routes/lobby2';
 
 const app = express();
 
@@ -33,7 +35,7 @@ async function initializeServices() {
     console.log('Redis connected successfully');
 
     // Initialize socket service
-    const socketService = new SocketService(server);
+    const socketService = new SocketService2(server);
 
     // Basic health check endpoint
     app.get('/health', (req, res) => {

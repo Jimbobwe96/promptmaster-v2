@@ -17,6 +17,12 @@ interface JoinLobbyBody {
   code: string;
 }
 
+// Define interface for the request body
+interface VerifySessionBody {
+  lobbyCode: string;
+  username: string;
+}
+
 // Validation schemas remain the same
 const createLobbySchema = z.object({
   username: z.string().min(LOBBY_CONSTRAINTS.USERNAME_MIN_LENGTH).max(LOBBY_CONSTRAINTS.USERNAME_MAX_LENGTH)
@@ -148,8 +154,69 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (req, res)
   }
 };
 
+// Define the handler using RequestHandler type
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+const verifySessionHandler: RequestHandler<{}, {}, VerifySessionBody> = async (req, res) => {
+  try {
+    const { lobbyCode, username } = req.body;
+
+    if (!lobbyCode || !username) {
+      res.status(400).json({
+        canReconnect: false,
+        message: 'Missing required session data'
+      });
+      return;
+    }
+
+    // Get lobby data from Redis
+    const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
+    if (!lobbyData) {
+      res.status(200).json({
+        canReconnect: false,
+        message: 'Lobby no longer exists'
+      });
+      return;
+    }
+
+    const lobby: Lobby2 = JSON.parse(lobbyData);
+
+    // Check if player exists in the lobby
+    const player = lobby.players.find((p) => p.username === username);
+    if (!player) {
+      res.status(200).json({
+        canReconnect: false,
+        message: 'Player not found in lobby'
+      });
+      return;
+    }
+
+    // Check if player is not already connected
+    if (player.connected) {
+      res.status(200).json({
+        canReconnect: false,
+        message: 'Player is already connected'
+      });
+      return;
+    }
+
+    // Return success response with additional lobby info
+    res.status(200).json({
+      canReconnect: true,
+      lobbyStatus: lobby.status,
+      isHost: lobby.hostUsername === username
+    });
+  } catch (error) {
+    console.error('Error verifying session:', error);
+    res.status(500).json({
+      canReconnect: false,
+      message: 'Server error verifying session'
+    });
+  }
+};
+
 // Register the handlers
 router.post('/create', createLobbyHandler);
 router.post('/join', joinLobbyHandler);
+router.post('/verify-session', verifySessionHandler);
 
 export default router;

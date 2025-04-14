@@ -3,8 +3,8 @@
 import React, { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useSocket } from '@/hooks/useSocket';
-import type { Lobby, LobbySession, GameState } from '@promptmaster/shared';
+import { useSocket2 } from '@/hooks/useSocket2';
+import type { Lobby2, SessionData } from '@promptmaster/shared';
 import { PlayerList } from './components/PlayerList';
 import { ShareCode } from './components/ShareCode';
 import { LobbySettings } from './components/LobbySettings';
@@ -18,10 +18,11 @@ interface LobbyPageProps {
 export default function LobbyPage({ params }: LobbyPageProps) {
   const { code } = use(params);
   const router = useRouter();
-  const { connect, disconnect, validateLobby, error, socket, emit, on } = useSocket();
-  const [lobby, setLobby] = useState<Lobby | null>(null);
+  const { connect, disconnect, validateLobby, error, socket, emit, on } = useSocket2();
+  const [lobby, setLobby] = useState<Lobby2 | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [currentUsername, setCurrentUsername] = useState<string>('');
 
   useEffect(() => {
     let mounted = true;
@@ -34,7 +35,8 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           throw new Error('No session data found');
         }
 
-        const session: LobbySession = JSON.parse(sessionData);
+        const session: SessionData = JSON.parse(sessionData);
+        setCurrentUsername(session.username);
 
         // Establish socket connection
         await connect();
@@ -58,13 +60,12 @@ export default function LobbyPage({ params }: LobbyPageProps) {
         });
 
         // Set up game start listener
-        on('game:started', (initialState: GameState) => {
+        on('game:started', (updatedLobby) => {
           if (mounted) {
-            console.log('Received initial game state:', initialState);
-            // Store the initial game state
-            sessionStorage.setItem(`game:${code}:state`, JSON.stringify(initialState));
-            // Then navigate
-            // THIS IS WHERE WE REDIRECT TO /GAME/CODE
+            console.log('Game started, redirecting to game page');
+            // Store updated lobby with game state
+            sessionStorage.setItem(`game:${code}:state`, JSON.stringify(updatedLobby));
+            // Navigate to game page
             router.replace(`/game/${code}`);
           }
         });
@@ -100,8 +101,8 @@ export default function LobbyPage({ params }: LobbyPageProps) {
     };
   }, [code, connect, disconnect, validateLobby, router, on, socket]);
 
-  const handleKickPlayer = (playerId: string) => {
-    emit('lobby:kick_player', playerId);
+  const handleKickPlayer = (username: string) => {
+    emit('lobby:kick_player', username);
   };
 
   const handleLeaveLobby = () => {
@@ -167,11 +168,11 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div className="grid gap-8 md:grid-cols-[1fr,300px]">
           <div className="space-y-8">
-            <ShareCode code={lobby.code} />
+            <ShareCode lobbyCode={lobby.lobbyCode} />
             <PlayerList
               players={lobby.players}
-              hostId={lobby.hostId}
-              currentUserId={socket?.id ?? ''}
+              hostUsername={lobby.hostUsername}
+              currentUsername={currentUsername}
               onKickPlayer={handleKickPlayer}
             />
           </div>
@@ -179,7 +180,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           <div>
             <LobbySettings
               settings={lobby.settings}
-              playerIsHost={lobby.hostId === socket?.id}
+              playerIsHost={lobby.hostUsername === currentUsername}
               canStart={lobby.players.filter((p) => p.connected).length >= 2}
               onStart={() => emit('lobby:start_game')}
               onUpdate={(settings) => emit('lobby:update_settings', settings)}
