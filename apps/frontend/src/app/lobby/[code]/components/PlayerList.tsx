@@ -9,7 +9,7 @@ interface PlayerListProps {
   onKickPlayer?: (username: string) => void;
 }
 
-export const PlayerList2 = ({ players, hostUsername, currentUsername, onKickPlayer }: PlayerListProps) => {
+export const PlayerList = ({ players, hostUsername, currentUsername, onKickPlayer }: PlayerListProps) => {
   const [kickingUsername, setKickingUsername] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 

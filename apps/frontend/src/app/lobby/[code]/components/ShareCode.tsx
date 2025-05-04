@@ -4,7 +4,7 @@ interface ShareCodeProps {
   lobbyCode: string;
 }
 
-export function ShareCode2({ lobbyCode }: ShareCodeProps) {
+export function ShareCode({ lobbyCode }: ShareCodeProps) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = async () => {
