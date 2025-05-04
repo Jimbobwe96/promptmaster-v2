@@ -58,7 +58,7 @@ export class SocketService2 {
 
         // If no connected players, delete the lobby
         if (!lobby.players.some((player) => player.connected)) {
-          console.log(`Deleting empty lobby: ${lobby.lobbyCode}`);
+          console.log(`Deleting lobby: ${lobby.lobbyCode}; no players connected`);
           await redisClient.del(key);
         }
       }

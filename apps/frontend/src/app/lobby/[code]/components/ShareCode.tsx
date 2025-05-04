@@ -1,12 +1,10 @@
-'use client';
-
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface ShareCodeProps {
   lobbyCode: string;
 }
 
-export function ShareCode({ lobbyCode }: ShareCodeProps) {
+export function ShareCode2({ lobbyCode }: ShareCodeProps) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = async () => {

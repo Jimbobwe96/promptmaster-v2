@@ -11,7 +11,14 @@ interface LobbySettingsProps {
   onLeave: () => void;
 }
 
-export const LobbySettings = ({ settings, playerIsHost, canStart, onStart, onUpdate, onLeave }: LobbySettingsProps) => {
+export const LobbySettings2 = ({
+  settings,
+  playerIsHost,
+  canStart,
+  onStart,
+  onUpdate,
+  onLeave
+}: LobbySettingsProps) => {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const handleRoundsChange = (e: React.ChangeEvent<HTMLInputElement>) => {

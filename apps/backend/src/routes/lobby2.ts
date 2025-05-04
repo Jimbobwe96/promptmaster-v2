@@ -154,7 +154,6 @@ const joinLobbyHandler: RequestHandler<{}, {}, JoinLobbyBody> = async (req, res)
   }
 };
 
-// Define the handler using RequestHandler type
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const verifySessionHandler: RequestHandler<{}, {}, VerifySessionBody> = async (req, res) => {
   try {

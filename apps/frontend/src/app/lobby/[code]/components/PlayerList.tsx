@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import type { Player } from '@promptmaster/shared';
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 
@@ -9,37 +9,9 @@ interface PlayerListProps {
   onKickPlayer?: (username: string) => void;
 }
 
-export const PlayerList = ({ players, hostUsername, currentUsername, onKickPlayer }: PlayerListProps) => {
+export const PlayerList2 = ({ players, hostUsername, currentUsername, onKickPlayer }: PlayerListProps) => {
   const [kickingUsername, setKickingUsername] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const DISCONNECT_TIMEOUT_MS = 15000;
-  const [now, setNow] = useState<number>(Date.now());
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  const getDisconnectTime = (lastSeen: Date | undefined) => {
-    if (!lastSeen) return 0;
-    return Math.max(0, now - new Date(lastSeen).getTime());
-  };
-
-  const getRemainingTime = (disconnectTimeMs: number) => {
-    const remaining = DISCONNECT_TIMEOUT_MS - disconnectTimeMs;
-    return Math.max(0, Math.ceil(remaining / 1000));
-  };
 
   const handleKickClick = (username: string) => {
     if (timeoutRef.current) {
@@ -83,12 +55,6 @@ export const PlayerList = ({ players, hostUsername, currentUsername, onKickPlaye
         <div className="space-y-3">
           {players.map((player) => {
             const isCurrentUser = player.username === currentUsername;
-            const disconnectTimeMs = !player.connected ? getDisconnectTime(player.lastSeen) : 0;
-            const remainingTimeSeconds = getRemainingTime(disconnectTimeMs);
-
-            if (!player.connected && disconnectTimeMs >= DISCONNECT_TIMEOUT_MS) {
-              return null;
-            }
 
             return (
               <div
@@ -107,7 +73,7 @@ export const PlayerList = ({ players, hostUsername, currentUsername, onKickPlaye
                     className={`w-2 h-2 rounded-full ${player.connected ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}
                   />
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-slate-700">{player.username}</span>
                       {player.username === hostUsername && (
                         <span className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">
@@ -119,12 +85,12 @@ export const PlayerList = ({ players, hostUsername, currentUsername, onKickPlaye
                           You
                         </span>
                       )}
+                      {!player.connected && (
+                        <span className="px-2 py-0.5 text-xs bg-red-100 text-red-600 rounded-full font-medium animate-pulse">
+                          Disconnected
+                        </span>
+                      )}
                     </div>
-                    {!player.connected && remainingTimeSeconds > 0 && (
-                      <div className="text-xs text-red-600 mt-1">
-                        Disconnected • Reconnecting ({remainingTimeSeconds}s)
-                      </div>
-                    )}
                   </div>
                 </div>
 
