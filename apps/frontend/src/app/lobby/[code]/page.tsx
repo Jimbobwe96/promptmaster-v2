@@ -30,7 +30,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
     const initializeLobby = async () => {
       try {
         // Get session data
-        const sessionData = sessionStorage.getItem(`lobby:${code}`);
+        const sessionData = localStorage.getItem(`lobby:${code}`);
         if (!sessionData) {
           throw new Error('No session data found');
         }
@@ -64,7 +64,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
           if (mounted) {
             console.log('Game started, redirecting to game page');
             // Store updated lobby with game state
-            sessionStorage.setItem(`game:${code}:state`, JSON.stringify(updatedLobby));
+            localStorage.setItem(`game:${code}:state`, JSON.stringify(updatedLobby));
             // Navigate to game page
             router.replace(`/game/${code}`);
           }
@@ -110,7 +110,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       emit('lobby:leave');
 
       // Remove session data
-      sessionStorage.removeItem(`lobby:${code}`);
+      localStorage.removeItem(`lobby:${code}`);
 
       // Set up one-time listener for leave confirmation
       on('lobby:left', () => {

@@ -1,9 +1,9 @@
 import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Timer } from '../Timer';
+import type { Lobby2 } from '@promptmaster/shared';
 
 interface GuessInputProps {
-  endTime: number;
-  imageUrl: string;
+  lobby: Lobby2;
   onSubmit: (guess: string) => void;
 }
 
@@ -11,9 +11,26 @@ export interface GuessInputHandle {
   getDraft: () => string;
 }
 
-export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(({ endTime, imageUrl, onSubmit }, ref) => {
+export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(({ lobby, onSubmit }, ref) => {
   const [guess, setGuess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get the current round
+  const currentRound = lobby.gameState?.rounds[lobby.gameState.rounds.length - 1];
+
+  // Function to return current draft - place hooks before conditionals
+  const getDraft = useCallback(() => {
+    return guess.trim();
+  }, [guess]);
+
+  // Expose getDraft to parent component
+  useImperativeHandle(ref, () => ({
+    getDraft
+  }));
+
+  if (!currentRound || !currentRound.phaseEndTime || !currentRound.imageUrl) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,20 +45,14 @@ export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(({ endTi
     }
   };
 
-  // Function to return current draft
-  const getDraft = useCallback(() => {
-    return guess.trim();
-  }, [guess]);
-
-  // Expose getDraft to parent component
-  useImperativeHandle(ref, () => ({
-    getDraft
-  }));
-
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
       <div className="mb-6">
-        <img src={imageUrl} alt="AI Generated" className="w-full aspect-[4/3] object-cover rounded-lg mb-4" />
+        <img
+          src={currentRound.imageUrl}
+          alt="AI Generated"
+          className="w-full aspect-[4/3] object-cover rounded-lg mb-4"
+        />
         <h2 className="text-xl font-semibold text-slate-800">What prompt created this image?</h2>
       </div>
 
@@ -60,7 +71,7 @@ export const GuessInput = forwardRef<GuessInputHandle, GuessInputProps>(({ endTi
 
         <div className="flex justify-between items-center">
           <Timer
-            endTime={endTime}
+            endTime={currentRound.phaseEndTime}
             onComplete={() => {
               if (guess.trim()) {
                 onSubmit(guess.trim());

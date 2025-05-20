@@ -25,13 +25,13 @@ export default function Home() {
   useEffect(() => {
     const checkForReconnection = async () => {
       // Find any keys that match the pattern
-      const sessionKeys = Object.keys(sessionStorage).filter((key) => key.startsWith('lobby:'));
+      const sessionKeys = Object.keys(localStorage).filter((key) => key.startsWith('lobby:'));
 
       if (sessionKeys.length === 0) return;
 
       // Get the most recent session
       const mostRecentKey = sessionKeys[0]; // Could sort by joinedAt if multiple exist
-      const sessionData = JSON.parse(sessionStorage.getItem(mostRecentKey) || '{}');
+      const sessionData = JSON.parse(localStorage.getItem(mostRecentKey) || '{}');
 
       if (!sessionData.lobbyCode || !sessionData.username) return;
 
@@ -100,7 +100,7 @@ export default function Home() {
         username: createName.trim(),
         joinedAt: new Date().toISOString()
       };
-      sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
+      localStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
 
       // Close modal before redirect
       setIsCreateModalOpen(false);
@@ -143,7 +143,7 @@ export default function Home() {
         username: joinName.trim(),
         joinedAt: new Date().toISOString()
       };
-      sessionStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
+      localStorage.setItem(`lobby:${lobby.code}`, JSON.stringify(session));
 
       // Close modal before redirect
       setIsJoinModalOpen(false);
@@ -407,7 +407,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   // Clear session data and close modal
-                  sessionStorage.removeItem(`lobby:${reconnectData.lobbyCode}`);
+                  localStorage.removeItem(`lobby:${reconnectData.lobbyCode}`);
                   setShowReconnectModal(false);
                 }}
                 className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"

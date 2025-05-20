@@ -1,22 +1,30 @@
 import React from 'react';
 import { Timer } from '../Timer';
+import type { Lobby2 } from '@promptmaster/shared';
 
 interface WaitingForGuessesProps {
-  endTime: number;
-  imageUrl: string;
-  guessCount: number;
-  expectedGuessCount: number;
+  lobby: Lobby2;
 }
 
-export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({
-  endTime,
-  imageUrl,
-  guessCount,
-  expectedGuessCount
-}) => {
+export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({ lobby }) => {
+  // Get the current round
+  const currentRound = lobby.gameState?.rounds[lobby.gameState.rounds.length - 1];
+
+  if (!currentRound || !currentRound.phaseEndTime || !currentRound.imageUrl) {
+    return null;
+  }
+
+  // Get counts from round
+  const guessCount = currentRound.guesses.length;
+  const expectedGuessCount = currentRound.expectedGuessCount || 0;
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm text-center">
-      <img src={imageUrl} alt="AI Generated" className="w-full aspect-[4/3] object-cover rounded-lg mb-4" />
+      <img
+        src={currentRound.imageUrl}
+        alt="AI Generated"
+        className="w-full aspect-[4/3] object-cover rounded-lg mb-4"
+      />
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-slate-800 mb-2">Waiting for Guesses</h2>
         <p className="text-slate-600">
@@ -29,7 +37,7 @@ export const WaitingForGuesses: React.FC<WaitingForGuessesProps> = ({
       </div>
 
       <div className="flex justify-center">
-        <Timer endTime={endTime} />
+        <Timer endTime={currentRound.phaseEndTime} />
       </div>
     </div>
   );

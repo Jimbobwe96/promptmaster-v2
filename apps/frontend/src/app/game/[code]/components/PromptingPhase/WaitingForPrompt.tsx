@@ -2,13 +2,23 @@
 
 import React from 'react';
 import { Timer } from '../Timer';
+import type { Lobby2 } from '@promptmaster/shared';
 
 interface WaitingForPromptProps {
-  endTime: number;
-  prompterUsername: string;
+  lobby: Lobby2;
 }
 
-export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({ endTime, prompterUsername }) => {
+export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({ lobby }) => {
+  // Get the current round
+  const currentRound = lobby.gameState?.rounds[lobby.gameState.rounds.length - 1];
+
+  if (!currentRound || !currentRound.phaseEndTime) {
+    return null;
+  }
+
+  // Find the prompter's username
+  const prompterUsername = currentRound.prompterUsername;
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm text-center">
       <div className="mb-6">
@@ -27,7 +37,7 @@ export const WaitingForPrompt: React.FC<WaitingForPromptProps> = ({ endTime, pro
       </div>
 
       <div className="flex justify-center">
-        <Timer endTime={endTime} />
+        <Timer endTime={currentRound.phaseEndTime} />
       </div>
     </div>
   );

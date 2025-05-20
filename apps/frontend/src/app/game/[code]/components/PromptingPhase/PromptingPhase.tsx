@@ -1,33 +1,38 @@
 import React, { forwardRef } from 'react';
 import { PromptInput, PromptInputHandle } from './PromptInput';
 import { WaitingForPrompt } from './WaitingForPrompt';
-import type { GameRound, Player } from '@promptmaster/shared';
+import type { Lobby2 } from '@promptmaster/shared';
 
 interface PromptingPhaseProps {
-  round: GameRound;
-  currentPlayerId: string;
+  lobby: Lobby2;
+  currentUsername: string;
   onPromptSubmit: (prompt: string) => void;
-  players: Player[];
 }
 
 export const PromptingPhase = forwardRef<PromptInputHandle, PromptingPhaseProps>(
-  ({ round, currentPlayerId, onPromptSubmit, players }, ref) => {
-    console.log('Phase endTime:', round.endTime);
-    const isPrompter = round.prompterId === currentPlayerId;
+  ({ lobby, currentUsername, onPromptSubmit }, ref) => {
+    // Get the current round (last round in the array)
+    const currentRound = lobby.gameState?.rounds[lobby.gameState.rounds.length - 1];
 
-    const prompterUsername = players.find((p) => p.id === round.prompterId)?.username || 'Unknown Player';
+    if (!currentRound) {
+      console.log('No current round available');
+      return null;
+    }
 
-    if (!round.endTime) {
-      console.log('No endTime available for round');
+    console.log('Prompting phase endTime:', currentRound.phaseEndTime);
+    const isPrompter = currentRound.prompterUsername === currentUsername;
+
+    if (!currentRound.phaseEndTime) {
+      console.log('No phaseEndTime available for round');
       return null;
     }
 
     return (
       <div className="w-full max-w-2xl mx-auto">
         {isPrompter ? (
-          <PromptInput ref={ref} endTime={round.endTime} onSubmit={onPromptSubmit} />
+          <PromptInput ref={ref} lobby={lobby} onSubmit={onPromptSubmit} />
         ) : (
-          <WaitingForPrompt endTime={round.endTime} prompterUsername={prompterUsername} />
+          <WaitingForPrompt lobby={lobby} />
         )}
       </div>
     );

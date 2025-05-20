@@ -2,9 +2,10 @@
 
 import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Timer } from '../Timer';
+import type { Lobby2 } from '@promptmaster/shared';
 
 interface PromptInputProps {
-  endTime: number;
+  lobby: Lobby2;
   onSubmit: (prompt: string) => void;
 }
 
@@ -13,9 +14,26 @@ export interface PromptInputHandle {
   getDraft: () => string;
 }
 
-export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(({ endTime, onSubmit }, ref) => {
+export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(({ lobby, onSubmit }, ref) => {
   const [prompt, setPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get the current round
+  const currentRound = lobby.gameState?.rounds[lobby.gameState.rounds.length - 1];
+
+  // Function to return current draft
+  const getDraft = useCallback(() => {
+    return prompt.trim();
+  }, [prompt]);
+
+  // Expose getDraft to parent component
+  useImperativeHandle(ref, () => ({
+    getDraft
+  }));
+
+  if (!currentRound || !currentRound.phaseEndTime) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,16 +47,6 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(({ en
       setIsSubmitting(false);
     }
   };
-
-  // Function to return current draft
-  const getDraft = useCallback(() => {
-    return prompt.trim();
-  }, [prompt]);
-
-  // Expose getDraft to parent component
-  useImperativeHandle(ref, () => ({
-    getDraft
-  }));
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -62,7 +70,7 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(({ en
 
         <div className="flex justify-between items-center">
           <Timer
-            endTime={endTime}
+            endTime={currentRound.phaseEndTime}
             onComplete={() => {
               if (prompt.trim()) {
                 onSubmit(prompt.trim());
