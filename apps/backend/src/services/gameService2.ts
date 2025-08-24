@@ -102,6 +102,14 @@ export class GameService2 {
       const prompterOrder = this.shuffleArray(connectedPlayers.map((p) => p.username));
       console.log('Shuffled prompter order:', prompterOrder);
 
+      // Debug logging
+      console.log('DEBUG GAME INITIALIZATION:');
+      console.log(
+        '- connectedPlayers:',
+        connectedPlayers.map((p) => ({ username: p.username, id: p.id, connected: p.connected }))
+      );
+      console.log('- prompterOrder:', prompterOrder);
+
       // Create game state
       lobby.gameState = {
         rounds: [],
@@ -145,6 +153,16 @@ export class GameService2 {
       const roundIndex = gameState.rounds.length;
       const prompterUsername = gameState.prompterOrder[roundIndex % gameState.prompterOrder.length];
 
+      // Debug logging
+      console.log('DEBUG CREATE NEW ROUND:');
+      console.log('- roundIndex:', roundIndex);
+      console.log('- prompterOrder:', gameState.prompterOrder);
+      console.log('- prompterUsername selected:', prompterUsername);
+      console.log(
+        '- calculation:',
+        `${roundIndex} % ${gameState.prompterOrder.length} = ${roundIndex % gameState.prompterOrder.length}`
+      );
+
       // Create new round
       const newRound: GameRound2 = {
         phase: 'prompting',
@@ -156,6 +174,12 @@ export class GameService2 {
 
       // Add round to game state
       gameState.rounds.push(newRound);
+
+      console.log('- newRound created:', {
+        phase: newRound.phase,
+        prompterUsername: newRound.prompterUsername,
+        phaseEndTime: newRound.phaseEndTime
+      });
 
       // Save the updated lobby
       await this.updateLobby(lobby);

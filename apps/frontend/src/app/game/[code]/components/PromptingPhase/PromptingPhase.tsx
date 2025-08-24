@@ -20,7 +20,19 @@ export const PromptingPhase = forwardRef<PromptInputHandle, PromptingPhaseProps>
     }
 
     console.log('Prompting phase endTime:', currentRound.phaseEndTime);
+
+    // Debug the prompter assignment
+    console.log('DEBUG PROMPTER ASSIGNMENT:');
+    console.log('- currentRound.prompterUsername:', currentRound.prompterUsername);
+    console.log('- currentUsername:', currentUsername);
+    console.log('- prompterOrder:', lobby.gameState?.prompterOrder);
+    console.log(
+      '- all players:',
+      lobby.players.map((p) => ({ username: p.username, connected: p.connected }))
+    );
+
     const isPrompter = currentRound.prompterUsername === currentUsername;
+    console.log('- isPrompter:', isPrompter);
 
     if (!currentRound.phaseEndTime) {
       console.log('No phaseEndTime available for round');

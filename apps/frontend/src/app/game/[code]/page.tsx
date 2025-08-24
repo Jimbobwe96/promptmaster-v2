@@ -47,6 +47,9 @@ export default function GamePage({ params }: GamePageProps) {
 
         // Store username from session data
         setCurrentUsername(session.username);
+        console.log('DEBUG FRONTEND SESSION:');
+        console.log('- session data:', session);
+        console.log('- currentUsername set to:', session.username);
 
         // Connect to socket server
         await connect();
