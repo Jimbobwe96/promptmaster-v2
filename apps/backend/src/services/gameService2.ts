@@ -3,43 +3,104 @@ import { Lobby2, GameState2, GameRound2, Player, RoundStatus } from '@promptmast
 import { OpenAI } from 'openai';
 import { fal } from '@fal-ai/client';
 import redisClient from '../config/redis';
+import {
+  shuffle,
+  selectPrompter,
+  expectedGuessCount,
+  isGameComplete,
+  phaseEndTime,
+  isPhaseDeadlineDue,
+  hasGuessed,
+  applyGuess,
+  allGuessesIn
+} from '../game/logic';
+import { broadcastLobby } from '../game/broadcast';
+
+/** Redis set holding the codes of every lobby with a game currently in progress. */
+const ACTIVE_GAMES_KEY = 'games:active';
+/** How often the reconciling tick scans for expired phase deadlines. */
+const TICK_INTERVAL_MS = 1000;
 
 export class GameService2 {
-  // Class fields for managing game state
-  private activeGameTimers: Map<string, NodeJS.Timeout>;
+  /** Single reconciling-tick loop; replaces per-phase in-memory timers. */
+  private tickInterval: NodeJS.Timeout | null = null;
+  /** Reentrancy guard so a slow tick never overlaps the next one. */
+  private ticking = false;
+  /**
+   * Deadlines this process has already acted on, keyed by `${code}:${roundIndex}:${phase}`.
+   * Keeps the tick from firing the same timeout repeatedly while it waits for a transition.
+   * Purely transient: lost on restart, which at worst causes one idempotent re-fire.
+   */
+  private handledDeadlines = new Set<string>();
 
   constructor(private io: Server) {
-    this.activeGameTimers = new Map();
+    this.startTick();
   }
 
-  // ==================== Core Infrastructure Methods ====================
+  // ==================== Reconciling Tick ====================
 
-  private calculatePhaseEndTime(durationSeconds: number): number {
-    return Date.now() + durationSeconds * 1000;
+  private startTick(): void {
+    this.tickInterval = setInterval(() => void this.tick(), TICK_INTERVAL_MS);
   }
 
-  private shuffleArray<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
-
-  private clearActiveTimer(lobbyCode: string): void {
-    const existingTimer = this.activeGameTimers.get(lobbyCode);
-    if (existingTimer) {
-      console.log(`Clearing active timer for lobby ${lobbyCode}`);
-      clearTimeout(existingTimer);
-      this.activeGameTimers.delete(lobbyCode);
+  /** Stop the tick loop (graceful shutdown). */
+  public stop(): void {
+    if (this.tickInterval) {
+      clearInterval(this.tickInterval);
+      this.tickInterval = null;
     }
   }
 
-  private setActiveTimer(lobbyCode: string, timer: NodeJS.Timeout, phase: string): void {
-    this.clearActiveTimer(lobbyCode);
-    console.log(`Setting new ${phase} timer for lobby ${lobbyCode}`);
-    this.activeGameTimers.set(lobbyCode, timer);
+  /**
+   * Scan every in-progress game and advance any whose current phase deadline has passed.
+   * All durable state lives in Redis, so this fully reconstructs pending work after a restart.
+   */
+  private async tick(): Promise<void> {
+    if (this.ticking) return;
+    this.ticking = true;
+    try {
+      const codes = await redisClient.sMembers(ACTIVE_GAMES_KEY);
+      for (const code of codes) {
+        await this.tickLobby(code);
+      }
+    } catch (error) {
+      console.error('Error in game tick:', error);
+    } finally {
+      this.ticking = false;
+    }
+  }
+
+  private async tickLobby(code: string): Promise<void> {
+    const lobby = await this.getLobby(code);
+
+    // Self-heal: drop anything that's no longer a running game from the active set.
+    if (!lobby || lobby.status !== 'playing' || !lobby.gameState) {
+      await redisClient.sRem(ACTIVE_GAMES_KEY, code);
+      return;
+    }
+
+    const rounds = lobby.gameState.rounds;
+    const round = rounds[rounds.length - 1];
+    if (!round || !isPhaseDeadlineDue(round.phase, round.phaseEndTime)) return;
+
+    // Fire each round/phase deadline at most once per process lifetime.
+    const key = `${code}:${rounds.length - 1}:${round.phase}`;
+    if (this.handledDeadlines.has(key)) return;
+    this.handledDeadlines.add(key);
+
+    await this.handlePhaseTimeout(code, round.phase);
+  }
+
+  private async registerActiveGame(lobbyCode: string): Promise<void> {
+    await redisClient.sAdd(ACTIVE_GAMES_KEY, lobbyCode);
+  }
+
+  private async unregisterActiveGame(lobbyCode: string): Promise<void> {
+    await redisClient.sRem(ACTIVE_GAMES_KEY, lobbyCode);
+    // Forget any handled-deadline markers for this lobby so the set stays bounded.
+    for (const key of this.handledDeadlines) {
+      if (key.startsWith(`${lobbyCode}:`)) this.handledDeadlines.delete(key);
+    }
   }
 
   // ==================== Data Management Methods ====================
@@ -64,24 +125,12 @@ export class GameService2 {
   }
 
   /**
-   * Get count of connected players in a lobby
-   */
-  private getConnectedPlayerCount(lobby: Lobby2): number {
-    return lobby.players.filter((p) => p.connected).length;
-  }
-
-  /**
    * Check if the game is complete (all rounds played)
    */
   private isGameComplete(lobby: Lobby2): boolean {
     const gameState = lobby.gameState;
     if (!gameState) return false;
-
-    const totalRoundsPlayed = gameState.rounds.length;
-    const roundsPerPlayer = lobby.settings.roundsPerPlayer;
-    const expectedRounds = gameState.prompterOrder.length * roundsPerPlayer;
-
-    return totalRoundsPlayed >= expectedRounds;
+    return isGameComplete(gameState.rounds.length, gameState.prompterOrder.length, lobby.settings.roundsPerPlayer);
   }
 
   // ==================== Game Initialization ====================
@@ -99,7 +148,7 @@ export class GameService2 {
 
       // Filter connected players and shuffle the prompter order
       const connectedPlayers = lobby.players.filter((player) => player.connected);
-      const prompterOrder = this.shuffleArray(connectedPlayers.map((p) => p.username));
+      const prompterOrder = shuffle(connectedPlayers.map((p) => p.username));
       console.log('Shuffled prompter order:', prompterOrder);
 
       // Debug logging
@@ -126,11 +175,14 @@ export class GameService2 {
       // Save the updated lobby
       await this.updateLobby(lobby);
 
+      // Register the game so the reconciling tick starts watching its deadlines
+      await this.registerActiveGame(lobbyCode);
+
       // Create the first round
       await this.createNewRound(lobby);
 
-      // Notify all clients that game has started
-      this.io.to(`lobby:${lobbyCode}`).emit('game:started', lobby);
+      // Notify all clients that game has started (redacted per-recipient)
+      broadcastLobby(this.io, lobby, 'game:started');
 
       console.log('Game initialized successfully for lobby:', lobbyCode);
       return;
@@ -151,7 +203,7 @@ export class GameService2 {
 
       const gameState = lobby.gameState;
       const roundIndex = gameState.rounds.length;
-      const prompterUsername = gameState.prompterOrder[roundIndex % gameState.prompterOrder.length];
+      const prompterUsername = selectPrompter(gameState.prompterOrder, roundIndex);
 
       // Debug logging
       console.log('DEBUG CREATE NEW ROUND:');
@@ -166,7 +218,7 @@ export class GameService2 {
       // Create new round
       const newRound: GameRound2 = {
         phase: 'prompting',
-        phaseEndTime: this.calculatePhaseEndTime(lobby.settings.timeLimit),
+        phaseEndTime: phaseEndTime(lobby.settings.timeLimit),
         prompterUsername,
         guesses: [],
         readyPlayers: []
@@ -184,11 +236,8 @@ export class GameService2 {
       // Save the updated lobby
       await this.updateLobby(lobby);
 
-      // Emit phase changed event
-      this.io.to(`lobby:${lobby.lobbyCode}`).emit('game:phase_changed', lobby);
-
-      // Start timer for this phase
-      this.startPhaseTimer(lobby.lobbyCode, 'prompting', lobby.settings.timeLimit);
+      // Emit phase changed event (the tick will enforce phaseEndTime)
+      broadcastLobby(this.io, lobby, 'game:phase_changed');
 
       console.log(`New round created. Round #${gameState.rounds.length}, Prompter: ${prompterUsername}`);
     } catch (error) {
@@ -217,18 +266,14 @@ export class GameService2 {
         throw new Error('No active round found');
       }
 
-      // Clear any existing timers
-      this.clearActiveTimer(lobbyCode);
-
       // Update the phase
       currentRound.phase = phase;
 
       // Phase-specific logic
       switch (phase) {
         case 'prompting':
-          // Set phase end time
-          currentRound.phaseEndTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
-          this.startPhaseTimer(lobbyCode, 'prompting', lobby.settings.timeLimit);
+          // Set phase end time (the tick enforces it)
+          currentRound.phaseEndTime = phaseEndTime(lobby.settings.timeLimit);
           break;
 
         case 'generating':
@@ -246,10 +291,9 @@ export class GameService2 {
             currentRound.imageUrl = data.imageUrl;
           }
           // Calculate expected guess count
-          currentRound.expectedGuessCount = this.getConnectedPlayerCount(lobby) - 1;
-          // Set phase end time
-          currentRound.phaseEndTime = this.calculatePhaseEndTime(lobby.settings.timeLimit);
-          this.startPhaseTimer(lobbyCode, 'guessing', lobby.settings.timeLimit);
+          currentRound.expectedGuessCount = expectedGuessCount(lobby.players);
+          // Set phase end time (the tick enforces it)
+          currentRound.phaseEndTime = phaseEndTime(lobby.settings.timeLimit);
           break;
 
         case 'scoring':
@@ -258,11 +302,10 @@ export class GameService2 {
           break;
 
         case 'results':
-          // Set up ready phase
+          // Set up ready phase (the tick enforces the deadline)
           {
             const RESULTS_DISPLAY_TIME = 20000; // 20 seconds
-            currentRound.phaseEndTime = this.calculatePhaseEndTime(RESULTS_DISPLAY_TIME / 1000);
-            this.startPhaseTimer(lobbyCode, 'results', RESULTS_DISPLAY_TIME / 1000);
+            currentRound.phaseEndTime = phaseEndTime(RESULTS_DISPLAY_TIME / 1000);
           }
           break;
       }
@@ -270,8 +313,8 @@ export class GameService2 {
       // Save the updated lobby
       await this.updateLobby(lobby);
 
-      // Broadcast the phase change to all players
-      this.io.to(`lobby:${lobbyCode}`).emit('game:phase_changed', lobby);
+      // Broadcast the phase change to all players (redacted per-recipient)
+      broadcastLobby(this.io, lobby, 'game:phase_changed');
 
       console.log(`Transitioned to ${phase} phase for lobby ${lobbyCode}`);
     } catch (error) {
@@ -280,19 +323,10 @@ export class GameService2 {
     }
   }
 
-  // ==================== Timer Management ====================
+  // ==================== Deadline Handling ====================
 
   /**
-   * Start a timer for the current phase
-   */
-  private startPhaseTimer(lobbyCode: string, phase: RoundStatus, durationSeconds: number): void {
-    const timer = setTimeout(() => this.handlePhaseTimeout(lobbyCode, phase), durationSeconds * 1000);
-    this.setActiveTimer(lobbyCode, timer, phase);
-    console.log(`Started ${phase} phase timer for ${durationSeconds} seconds in lobby ${lobbyCode}`);
-  }
-
-  /**
-   * Handle timer expiration for any phase
+   * Handle a phase deadline expiring (invoked by the reconciling tick).
    */
   private async handlePhaseTimeout(lobbyCode: string, phase: RoundStatus): Promise<void> {
     try {
@@ -359,9 +393,6 @@ export class GameService2 {
       if (currentRound.phase !== 'prompting') {
         throw new Error('Not in prompting phase');
       }
-
-      // Clear the prompt timer
-      this.clearActiveTimer(lobbyCode);
 
       // Transition to generating phase with the prompt
       await this.transitionToPhase(lobbyCode, 'generating', { prompt });
@@ -536,8 +567,8 @@ export class GameService2 {
       const lobby = await this.getLobby(lobbyCode);
       if (!lobby) return;
 
-      // Clear any active timers
-      this.clearActiveTimer(lobbyCode);
+      // Stop the tick from watching this lobby
+      await this.unregisterActiveGame(lobbyCode);
 
       // Update lobby status
       lobby.status = 'waiting';
@@ -546,8 +577,8 @@ export class GameService2 {
       // Save the updated lobby
       await this.updateLobby(lobby);
 
-      // Notify all players that the game has ended
-      this.io.to(`lobby:${lobbyCode}`).emit('game:ended', lobby);
+      // Notify all players that the game has ended (round secrets fully revealed by now)
+      broadcastLobby(this.io, lobby, 'game:ended');
 
       console.log(`Game ended for lobby ${lobbyCode}`);
     } catch (error) {
@@ -556,75 +587,87 @@ export class GameService2 {
     }
   }
 
-  // ==================== Stub Methods for Future Implementation ====================
+  // ==================== Guessing Phase Methods ====================
 
-  // These methods will be implemented later as we continue development
+  /**
+   * Handle a guess submission: record (or revise) the player's guess, tell everyone someone
+   * guessed, and advance to scoring as soon as every expected guesser is in.
+   */
+  async handleGuessSubmission(lobbyCode: string, username: string, guess: string): Promise<void> {
+    try {
+      const lobby = await this.getLobby(lobbyCode);
+      if (!lobby || !lobby.gameState) throw new Error('Game not found');
 
-  private async handleGuessTimeout(lobbyCode: string): Promise<void> {
-    // Implement later
-    console.log(`Guessing phase timeout for ${lobbyCode} - not yet implemented`);
+      const gameState = lobby.gameState;
+      const lastIdx = gameState.rounds.length - 1;
+      const currentRound = gameState.rounds[lastIdx];
+
+      // Only accept guesses during the guessing phase, and never from the prompter
+      if (currentRound.phase !== 'guessing') return;
+      if (currentRound.prompterUsername === username) return;
+
+      // Record the guess
+      gameState.rounds[lastIdx] = applyGuess(currentRound, username, guess, new Date());
+      await this.updateLobby(lobby);
+
+      // Let everyone know someone guessed (contents stay redacted per-recipient)
+      broadcastLobby(this.io, lobby, 'game:guess_submitted');
+
+      // Everyone in? Move straight to scoring.
+      if (allGuessesIn(gameState.rounds[lastIdx])) {
+        await this.transitionToPhase(lobbyCode, 'scoring');
+      }
+    } catch (error) {
+      console.error('Error handling guess submission:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Guessing deadline reached: nudge connected guessers who haven't submitted for their draft,
+   * then after a short grace move to scoring with whatever guesses arrived.
+   */
+  private async handleGuessTimeout(lobbyCode: string): Promise<void> {
+    try {
+      const lobby = await this.getLobby(lobbyCode);
+      if (!lobby || !lobby.gameState) throw new Error('Game not found');
+
+      const currentRound = lobby.gameState.rounds[lobby.gameState.rounds.length - 1];
+      if (currentRound.phase !== 'guessing') return;
+
+      const laggards = lobby.players.filter(
+        (p) =>
+          p.connected && p.id && p.username !== currentRound.prompterUsername && !hasGuessed(currentRound, p.username)
+      );
+      for (const p of laggards) {
+        this.io.to(p.id).emit('game:request_guess_draft');
+      }
+
+      // Give drafts a moment to land, then score whatever we have.
+      setTimeout(async () => {
+        const updated = await this.getLobby(lobbyCode);
+        if (!updated || !updated.gameState) return;
+        const round = updated.gameState.rounds[updated.gameState.rounds.length - 1];
+        if (round.phase === 'guessing') {
+          await this.transitionToPhase(lobbyCode, 'scoring');
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error handling guess timeout:', error);
+      await this.transitionToPhase(lobbyCode, 'scoring');
+    }
+  }
+
+  // ==================== Not Yet Implemented (Phase 3+) ====================
+
+  // Scoring (the 'scoring' phase) and the results ready-up flow land in later phases.
+  // Until then a game plays through guessing and pauses at 'scoring'.
+
   private async handleReadyPhaseTimeout(lobbyCode: string): Promise<void> {
-    // Implement later
     console.log(`Ready phase timeout for ${lobbyCode} - not yet implemented`);
   }
 
-  // stubs
-  async handlePlayerReady(lobbyCode: string, username: string) {
-    return;
-  }
-
-  async handleGuessSubmission(lobbyCode: string, username: string, guess: string) {
+  async handlePlayerReady(lobbyCode: string, _username: string): Promise<void> {
     return;
   }
 }
-
-// import { Server } from 'socket.io';
-// import { Lobby2, GameState2, GameRound2, Player } from '@promptmaster/shared';
-// import { OpenAI } from 'openai';
-// import { fal } from '@fal-ai/client';
-// import redisClient from '../config/redis';
-
-// export class GameService2 {
-//   private async getLobby(lobbyCode: string): Promise<Lobby2 | null> {
-//     const lobbyData = await redisClient.get(`lobby:${lobbyCode}`);
-//     return lobbyData ? JSON.parse(lobbyData) : null;
-//   }
-
-//   private async updateLobby(lobby: Lobby2): Promise<void> {
-//     await redisClient.setEx(`lobby:${lobby.lobbyCode}`, 24 * 60 * 60, JSON.stringify(lobby));
-//   }
-
-//   // sample implementation
-//   async handlePromptSubmission2(lobbyCode: string, playerId: string, prompt: string): Promise<void> {
-//     try {
-//       const lobby = await this.getLobby(lobbyCode);
-//       if (!lobby) throw new Error('Lobby not found');
-
-//       const gameState = lobby.gameState;
-//       if (!gameState) throw new Error('Lobby does not have an active game');
-
-//       const currentRound = gameState.rounds[gameState.rounds.length - 1];
-//       if (!currentRound) throw new Error('No active round');
-
-//       // find the player's username
-//       const playerUsername = lobby.players.find((p: Player) => p.id === playerId)?.username;
-//       if (!playerUsername) throw new Error('Player not found for some odd reason');
-
-//       // check if the player is the prompter
-//       if (currentRound.prompterUsername !== playerUsername) {
-//         throw new Error('Not the current prompter');
-//       }
-
-//       // check if the prompt is valid
-//       if (!prompt) throw new Error('Prompt is required');
-
-//       // process the prompt
-//       // await this.processPrompt(lobbyCode, prompt);
-//     } catch (error) {
-//       console.error('Error handling prompt submission:', error);
-//       throw error;
-//     }
-//   }
-// }

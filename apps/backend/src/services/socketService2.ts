@@ -11,6 +11,8 @@ import type {
 import { LOBBY_CONSTRAINTS } from '@promptmaster/shared';
 import redisClient from '../config/redis';
 import { GameService2 } from './gameService2';
+import { redactLobbyFor } from '../game/logic';
+import { broadcastLobby } from '../game/broadcast';
 
 type SocketWithData = Socket<ClientToServerEvents2, ServerToClientEvents2>;
 
@@ -116,11 +118,11 @@ export class SocketService2 {
           // Update lobby in Redis
           await this.updateLobby(lobby);
 
-          // Emit validated event
-          socket.emit('lobby:validated', lobby);
+          // Emit validated event (redacted for this viewer in case a game is in progress)
+          socket.emit('lobby:validated', redactLobbyFor(lobby, username));
 
-          // Broadcast update to everyone
-          this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+          // Broadcast update to everyone (each redacted for what they may see)
+          broadcastLobby(this.io, lobby, 'lobby:updated');
 
           // Log reconnection
           if (wasDisconnected) {
@@ -184,7 +186,7 @@ export class SocketService2 {
           await this.updateLobby(lobby);
 
           // Broadcast update to all clients in the lobby
-          this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+          broadcastLobby(this.io, lobby, 'lobby:updated');
         } catch (error) {
           console.error('Error updating lobby settings:', error);
           this.emitError(socket, 'SERVER_ERROR', 'Failed to update settings');
@@ -224,7 +226,7 @@ export class SocketService2 {
             await this.updateLobby(lobby);
 
             // Notify remaining players
-            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+            broadcastLobby(this.io, lobby, 'lobby:updated');
           } else {
             // If no players left, delete the lobby
             await redisClient.del(`lobby:${code}`);
@@ -297,7 +299,7 @@ export class SocketService2 {
           await this.updateLobby(lobby);
 
           // Broadcast update to remaining players
-          this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+          broadcastLobby(this.io, lobby, 'lobby:updated');
         } catch (error) {
           console.error('Error kicking player:', error);
           this.emitError(socket, 'SERVER_ERROR', 'Failed to kick player');
@@ -344,11 +346,8 @@ export class SocketService2 {
             return;
           }
 
-          // Initialize game
+          // Initialize game (it broadcasts game:started + the first game:phase_changed itself)
           await this.gameService.initializeGame(code);
-
-          // Notify all clients in the lobby that game has started
-          this.io.to(`lobby:${code}`).emit('game:started', lobby);
         } catch (error) {
           console.error('Error starting game:', error);
           this.emitError(socket, 'SERVER_ERROR', 'Failed to start game');
@@ -498,7 +497,7 @@ export class SocketService2 {
             await this.updateLobby(lobby);
 
             // Notify remaining players
-            this.io.to(`lobby:${code}`).emit('lobby:updated', lobby);
+            broadcastLobby(this.io, lobby, 'lobby:updated');
           }
 
           // Clean up socket tracking
@@ -519,5 +518,6 @@ export class SocketService2 {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+    this.gameService.stop();
   }
 }

@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/init.ts",
     "build": "tsc",
-    "start": "node dist/init.js"
+    "start": "node dist/init.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fal-ai/client": "^1.0.4",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/node": "^22.8.7",
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "vitest": "^2.1.8"
   }
 }
