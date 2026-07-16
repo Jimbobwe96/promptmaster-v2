@@ -9,7 +9,8 @@ interface ImageSectionProps {
 }
 
 export const ImageSection: React.FC<ImageSectionProps> = ({ imageUrl, prompt, prompterId, players }) => {
-  const prompter = players.find((p) => p.id === prompterId);
+  // prompterId is a username (the v2 domain identity), not a socket id
+  const prompter = players.find((p) => p.username === prompterId);
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm mb-8">

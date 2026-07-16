@@ -6,10 +6,11 @@ import { LeaderboardSection } from './LeaderboardSection';
 interface ResultsPhaseProps {
   results: RoundResults;
   players: Player[];
-  onNextRound?: () => void;
+  currentUsername: string;
+  onReady: () => void;
 }
 
-export const ResultsPhase: React.FC<ResultsPhaseProps> = ({ results, players, onNextRound }) => {
+export const ResultsPhase: React.FC<ResultsPhaseProps> = ({ results, players, currentUsername, onReady }) => {
   return (
     <div className="w-full max-w-6xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -29,7 +30,8 @@ export const ResultsPhase: React.FC<ResultsPhaseProps> = ({ results, players, on
             players={players}
             prompterId={results.prompterId}
             isLastRound={results.isLastRound}
-            onNextRound={onNextRound}
+            currentUsername={currentUsername}
+            onReady={onReady}
             readyPlayers={results.readyPlayers}
             readyPhaseEndTime={results.readyPhaseEndTime}
           />

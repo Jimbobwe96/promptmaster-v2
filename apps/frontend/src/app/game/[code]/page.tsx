@@ -102,16 +102,16 @@ export default function GamePage({ params }: GamePageProps) {
           // Will implement later
         });
 
-        // STUB: Listen for ready state updates
+        // Listen for ready state updates
         on('game:ready_state_update', (updatedLobby) => {
           console.log('Received ready state update:', updatedLobby);
           if (mounted) setLobby(updatedLobby);
         });
 
-        // STUB: Listen for game ended event
+        // Game over: the lobby is back to 'waiting' — return everyone to the lobby page
         on('game:ended', (updatedLobby) => {
           console.log('Game ended:', updatedLobby);
-          if (mounted) setLobby(updatedLobby);
+          if (mounted) router.replace(`/lobby/${code}`);
         });
 
         setIsLoading(false);
@@ -263,12 +263,16 @@ export default function GamePage({ params }: GamePageProps) {
                 score: currentRound.guesses.find((g) => g.username === score.playerId)?.score ?? 0
               })),
               scores: lobby.gameState.scores,
-              isLastRound: lobby.gameState.rounds.length === lobby.gameState.prompterOrder.length,
+              isLastRound:
+                lobby.gameState.rounds.length >=
+                lobby.gameState.prompterOrder.length * lobby.settings.roundsPerPlayer,
               nextRoundTime: currentRound.phaseEndTime,
               readyPlayers: currentRound.readyPlayers,
               readyPhaseEndTime: currentRound.phaseEndTime
             }}
             players={lobby.players}
+            currentUsername={currentUsername}
+            onReady={() => emit('game:mark_ready')}
           />
         )}
 

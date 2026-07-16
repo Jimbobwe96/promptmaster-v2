@@ -2,7 +2,6 @@ import React from 'react';
 import type { Player } from '@promptmaster/shared';
 import type { RoundResults } from '@promptmaster/shared';
 import { Timer } from '../Timer';
-import { useSocket } from '@/hooks/useSocket';
 
 interface LeaderboardSectionProps {
   scores: RoundResults['scores'];
@@ -11,7 +10,8 @@ interface LeaderboardSectionProps {
   players: Player[];
   prompterId: string;
   isLastRound: boolean;
-  onNextRound?: () => void;
+  currentUsername: string;
+  onReady: () => void;
   readyPlayers: string[];
   readyPhaseEndTime: number;
 }
@@ -23,17 +23,19 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
   players,
   prompterId,
   isLastRound,
+  currentUsername,
+  onReady,
   readyPlayers,
   readyPhaseEndTime
 }) => {
   const [activePlayerId, setActivePlayerId] = React.useState<string | null>(null);
-  const { socket, emit } = useSocket();
 
-  const isReady = socket?.id ? readyPlayers.includes(socket.id) : false;
+  // readyPlayers are usernames (the v2 domain identity)
+  const isReady = readyPlayers.includes(currentUsername);
 
   const handleReadyClick = () => {
-    if (!socket || isReady) return;
-    emit('game:mark_ready');
+    if (isReady) return;
+    onReady();
   };
 
   const rankedScores = [...scores].sort((a, b) => b.totalScore - a.totalScore);
@@ -90,7 +92,7 @@ export const LeaderboardSection: React.FC<LeaderboardSectionProps> = ({
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <div className="space-y-3">
           {rankedScores.map((score, index) => {
-            const player = players.find((p) => p.id === score.playerId);
+            const player = players.find((p) => p.username === score.playerId);
             const roundScore = roundScores.find((s) => s.playerId === score.playerId)?.score || 0;
             const guess = guesses.find((g) => g.playerId === score.playerId);
             const isActive = activePlayerId === score.playerId;

@@ -21,6 +21,15 @@ export default function Home() {
     lobbyStatus: 'waiting' | 'playing';
   } | null>(null);
 
+  // Show a notice if we landed here after being kicked from a lobby
+  const [showKickedModal, setShowKickedModal] = useState(false);
+  useEffect(() => {
+    if (sessionStorage.getItem('promptmaster:kicked')) {
+      sessionStorage.removeItem('promptmaster:kicked');
+      setShowKickedModal(true);
+    }
+  }, []);
+
   // Add useEffect to check for existing session
   useEffect(() => {
     const checkForReconnection = async () => {
@@ -369,6 +378,27 @@ export default function Home() {
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Kicked Modal */}
+      {showKickedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md m-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-[#1E293B]">Removed from Lobby</h2>
+              <button onClick={() => setShowKickedModal(false)} className="text-slate-400 hover:text-slate-600">
+                ✕
+              </button>
+            </div>
+            <p className="text-slate-600 mb-6">The host removed you from the lobby.</p>
+            <button
+              onClick={() => setShowKickedModal(false)}
+              className="w-full px-4 py-2 bg-[#4F46E5] text-white rounded-lg hover:bg-[#4F46E5]/90 transition-colors duration-200"
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}

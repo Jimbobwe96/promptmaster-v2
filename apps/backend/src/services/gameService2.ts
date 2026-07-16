@@ -12,9 +12,14 @@ import {
   isPhaseDeadlineDue,
   hasGuessed,
   applyGuess,
-  allGuessesIn
+  allGuessesIn,
+  applyScores,
+  rollUpTotals,
+  addReady,
+  allReady
 } from '../game/logic';
 import { broadcastLobby } from '../game/broadcast';
+import { scoreGuesses } from '../game/scoring';
 
 /** Redis set holding the codes of every lobby with a game currently in progress. */
 const ACTIVE_GAMES_KEY = 'games:active';
@@ -32,6 +37,11 @@ export class GameService2 {
    * Purely transient: lost on restart, which at worst causes one idempotent re-fire.
    */
   private handledDeadlines = new Set<string>();
+  /**
+   * Lobbies currently advancing out of the results phase. Guards against a double-advance
+   * when the all-ready click and the results-deadline tick fire near-simultaneously.
+   */
+  private advancing = new Set<string>();
 
   constructor(private io: Server) {
     this.startTick();
@@ -163,8 +173,10 @@ export class GameService2 {
       lobby.gameState = {
         rounds: [],
         prompterOrder,
+        // Keyed by username (the stable domain identity), not socket id — so scores
+        // survive reconnection and line up with guesses/prompter everywhere else.
         scores: connectedPlayers.map((player) => ({
-          playerId: player.id,
+          playerId: player.username,
           totalScore: 0
         }))
       };
@@ -269,54 +281,50 @@ export class GameService2 {
       // Update the phase
       currentRound.phase = phase;
 
-      // Phase-specific logic
+      // Phase-specific state mutation only — NO side effects here, so that everything
+      // below is persisted to Redis before any effect (which re-reads Redis) can run.
       switch (phase) {
         case 'prompting':
-          // Set phase end time (the tick enforces it)
           currentRound.phaseEndTime = phaseEndTime(lobby.settings.timeLimit);
           break;
 
         case 'generating':
-          // Store the prompt
           if (data && data.prompt) {
             currentRound.prompt = data.prompt;
           }
-          // Start image generation
-          this.startImageGeneration(lobbyCode);
           break;
 
         case 'guessing':
-          // Store the image URL and set up guessing phase
           if (data && data.imageUrl) {
             currentRound.imageUrl = data.imageUrl;
           }
-          // Calculate expected guess count
           currentRound.expectedGuessCount = expectedGuessCount(lobby.players);
-          // Set phase end time (the tick enforces it)
           currentRound.phaseEndTime = phaseEndTime(lobby.settings.timeLimit);
           break;
 
         case 'scoring':
-          // We'll implement scoring logic later
-          // This will transition to results when complete
+          // Scoring runs as a side effect below; transitions to results when done.
           break;
 
-        case 'results':
-          // Set up ready phase (the tick enforces the deadline)
-          {
-            const RESULTS_DISPLAY_TIME = 20000; // 20 seconds
-            currentRound.phaseEndTime = phaseEndTime(RESULTS_DISPLAY_TIME / 1000);
-          }
+        case 'results': {
+          const RESULTS_DISPLAY_TIME = 20000; // 20 seconds
+          currentRound.phaseEndTime = phaseEndTime(RESULTS_DISPLAY_TIME / 1000);
           break;
+        }
       }
 
-      // Save the updated lobby
+      // Persist the new state, then tell everyone (redacted per-recipient).
       await this.updateLobby(lobby);
-
-      // Broadcast the phase change to all players (redacted per-recipient)
       broadcastLobby(this.io, lobby, 'game:phase_changed');
-
       console.log(`Transitioned to ${phase} phase for lobby ${lobbyCode}`);
+
+      // Side effects run only AFTER the state is persisted, so anything that re-reads
+      // Redis (e.g. image generation, scoring) sees the prompt/guesses we just wrote.
+      if (phase === 'generating') {
+        void this.startImageGeneration(lobbyCode).catch((err) => console.error('startImageGeneration crashed:', err));
+      } else if (phase === 'scoring') {
+        void this.scoreRound(lobbyCode).catch((err) => console.error('scoreRound crashed:', err));
+      }
     } catch (error) {
       console.error(`Error transitioning to ${phase} phase:`, error);
       throw error;
@@ -524,6 +532,12 @@ export class GameService2 {
    * Generate an image using the fal.ai API
    */
   private async generateImage(prompt: string): Promise<string> {
+    // Dev-only escape hatch: skip the paid FAL call and return a deterministic
+    // placeholder image per prompt, so the full loop can be playtested for free.
+    if (process.env.MOCK_IMAGE === '1') {
+      return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/600`;
+    }
+
     try {
       console.log('Making API call to generate image for prompt:', prompt);
 
@@ -658,16 +672,102 @@ export class GameService2 {
     }
   }
 
-  // ==================== Not Yet Implemented (Phase 3+) ====================
+  // ==================== Scoring Phase Methods ====================
 
-  // Scoring (the 'scoring' phase) and the results ready-up flow land in later phases.
-  // Until then a game plays through guessing and pauses at 'scoring'.
+  /**
+   * Score the round's guesses with Claude, roll the scores into game totals, then advance
+   * to results. Runs as a side effect of entering the 'scoring' phase. On any failure we
+   * still advance to results (with whatever scores we have) so the game never stalls.
+   */
+  private async scoreRound(lobbyCode: string): Promise<void> {
+    try {
+      const lobby = await this.getLobby(lobbyCode);
+      if (!lobby || !lobby.gameState) throw new Error('Game not found');
 
-  private async handleReadyPhaseTimeout(lobbyCode: string): Promise<void> {
-    console.log(`Ready phase timeout for ${lobbyCode} - not yet implemented`);
+      const gameState = lobby.gameState;
+      const lastIdx = gameState.rounds.length - 1;
+      const round = gameState.rounds[lastIdx];
+
+      if (round.prompt && round.guesses.length > 0) {
+        const toScore = round.guesses.map((g, index) => ({ index, guess: g.guess }));
+        const scoreByIndex = await scoreGuesses(round.prompt, toScore);
+
+        const scoreByUsername = new Map<string, number>();
+        round.guesses.forEach((g, index) => scoreByUsername.set(g.username, scoreByIndex.get(index) ?? 0));
+
+        gameState.rounds[lastIdx] = applyScores(round, scoreByUsername);
+        gameState.scores = rollUpTotals(gameState.rounds, gameState.prompterOrder);
+        await this.updateLobby(lobby);
+      }
+
+      await this.transitionToPhase(lobbyCode, 'results');
+    } catch (error) {
+      console.error('Error scoring round:', error);
+      await this.transitionToPhase(lobbyCode, 'results');
+    }
   }
 
-  async handlePlayerReady(lobbyCode: string, _username: string): Promise<void> {
-    return;
+  // ==================== Results / Ready-up Phase Methods ====================
+
+  /**
+   * A player readied up during results. Record it, tell everyone, and advance to the next
+   * round (or end the game) once every connected player is ready.
+   */
+  async handlePlayerReady(lobbyCode: string, username: string): Promise<void> {
+    try {
+      const lobby = await this.getLobby(lobbyCode);
+      if (!lobby || !lobby.gameState) throw new Error('Game not found');
+
+      const gameState = lobby.gameState;
+      const lastIdx = gameState.rounds.length - 1;
+      const round = gameState.rounds[lastIdx];
+
+      // Only meaningful during results, and only from a connected member of this lobby
+      if (round.phase !== 'results') return;
+      if (!lobby.players.some((p) => p.username === username && p.connected)) return;
+
+      round.readyPlayers = addReady(round.readyPlayers, username);
+      await this.updateLobby(lobby);
+      broadcastLobby(this.io, lobby, 'game:ready_state_update');
+
+      const connectedUsernames = lobby.players.filter((p) => p.connected).map((p) => p.username);
+      if (allReady(round.readyPlayers, connectedUsernames)) {
+        await this.advanceAfterResults(lobbyCode);
+      }
+    } catch (error) {
+      console.error('Error handling player ready:', error);
+      throw error;
+    }
+  }
+
+  /** Results deadline reached — advance regardless of who readied up. */
+  private async handleReadyPhaseTimeout(lobbyCode: string): Promise<void> {
+    await this.advanceAfterResults(lobbyCode);
+  }
+
+  /**
+   * Leave the results phase: start the next round, or end the game if all rounds are played.
+   * Guarded so the all-ready path and the deadline tick can't both advance the same round.
+   */
+  private async advanceAfterResults(lobbyCode: string): Promise<void> {
+    if (this.advancing.has(lobbyCode)) return;
+    this.advancing.add(lobbyCode);
+    try {
+      const lobby = await this.getLobby(lobbyCode);
+      if (!lobby || !lobby.gameState) return;
+
+      const round = lobby.gameState.rounds[lobby.gameState.rounds.length - 1];
+      if (round.phase !== 'results') return; // already advanced
+
+      if (this.isGameComplete(lobby)) {
+        await this.endGame(lobbyCode);
+      } else {
+        await this.createNewRound(lobby);
+      }
+    } catch (error) {
+      console.error('Error advancing after results:', error);
+    } finally {
+      this.advancing.delete(lobbyCode);
+    }
   }
 }

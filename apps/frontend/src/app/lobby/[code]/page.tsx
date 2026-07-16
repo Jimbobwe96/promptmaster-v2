@@ -69,6 +69,16 @@ export default function LobbyPage({ params }: LobbyPageProps) {
             router.replace(`/game/${code}`);
           }
         });
+
+        // Kicked by the host: drop our session and bounce to home with a flag so the
+        // home page can explain what happened.
+        on('lobby:kicked', () => {
+          if (!mounted) return;
+          console.log('Kicked from lobby');
+          localStorage.removeItem(`lobby:${code}`);
+          sessionStorage.setItem('promptmaster:kicked', '1');
+          router.replace('/');
+        });
       } catch (err) {
         if (!mounted) return;
 
@@ -96,6 +106,7 @@ export default function LobbyPage({ params }: LobbyPageProps) {
       if (socket) {
         socket.off('lobby:updated');
         socket.off('game:started');
+        socket.off('lobby:kicked');
       }
       disconnect();
     };

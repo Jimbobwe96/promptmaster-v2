@@ -12,7 +12,11 @@ import {
   applyGuess,
   allGuessesIn,
   redactRoundFor,
-  redactLobbyFor
+  redactLobbyFor,
+  applyScores,
+  rollUpTotals,
+  addReady,
+  allReady
 } from './logic';
 
 const baseRound = (overrides: Partial<GameRound2> = {}): GameRound2 => ({
@@ -234,5 +238,85 @@ describe('redactLobbyFor', () => {
       createdAt: new Date()
     };
     expect(redactLobbyFor(lobby, 'bob')).toBe(lobby);
+  });
+});
+
+describe('applyScores', () => {
+  it('attaches scores by username without mutating the input', () => {
+    const round = baseRound({
+      guesses: [
+        { username: 'bob', guess: 'a dog', submittedAt: new Date(0) },
+        { username: 'carol', guess: 'a fish', submittedAt: new Date(0) }
+      ]
+    });
+    const next = applyScores(round, new Map([['bob', 90], ['carol', 40]]));
+    expect(round.guesses[0].score).toBeUndefined();
+    expect(next.guesses.find((g) => g.username === 'bob')?.score).toBe(90);
+    expect(next.guesses.find((g) => g.username === 'carol')?.score).toBe(40);
+  });
+
+  it('defaults a missing score to 0', () => {
+    const round = baseRound({ guesses: [{ username: 'bob', guess: 'x', submittedAt: new Date(0) }] });
+    expect(applyScores(round, new Map()).guesses[0].score).toBe(0);
+  });
+});
+
+describe('rollUpTotals', () => {
+  it('sums guess scores per username across rounds, seeded at 0 for everyone', () => {
+    const rounds: GameRound2[] = [
+      baseRound({
+        prompterUsername: 'alice',
+        guesses: [
+          { username: 'bob', guess: 'x', submittedAt: new Date(0), score: 80 },
+          { username: 'carol', guess: 'y', submittedAt: new Date(0), score: 50 }
+        ]
+      }),
+      baseRound({
+        prompterUsername: 'bob',
+        guesses: [
+          { username: 'alice', guess: 'z', submittedAt: new Date(0), score: 30 },
+          { username: 'carol', guess: 'w', submittedAt: new Date(0), score: 20 }
+        ]
+      })
+    ];
+    const totals = rollUpTotals(rounds, ['alice', 'bob', 'carol']);
+    const byName = Object.fromEntries(totals.map((t) => [t.playerId, t.totalScore]));
+    expect(byName).toEqual({ alice: 30, bob: 80, carol: 70 });
+  });
+
+  it('includes players with no scored guesses at 0', () => {
+    const totals = rollUpTotals([baseRound({ guesses: [] })], ['alice', 'bob']);
+    expect(totals).toEqual([
+      { playerId: 'alice', totalScore: 0 },
+      { playerId: 'bob', totalScore: 0 }
+    ]);
+  });
+});
+
+describe('addReady', () => {
+  it('adds a username without mutating the input', () => {
+    const ready = ['alice'];
+    const next = addReady(ready, 'bob');
+    expect(ready).toEqual(['alice']);
+    expect(next).toEqual(['alice', 'bob']);
+  });
+
+  it('is idempotent for an already-ready player', () => {
+    expect(addReady(['alice'], 'alice')).toEqual(['alice']);
+  });
+});
+
+describe('allReady', () => {
+  it('is true once every connected player is ready', () => {
+    expect(allReady(['alice', 'bob'], ['alice', 'bob'])).toBe(true);
+    expect(allReady(['alice', 'bob', 'carol'], ['alice', 'bob'])).toBe(true); // extra is fine
+  });
+
+  it('is false while someone connected has not readied', () => {
+    expect(allReady(['alice'], ['alice', 'bob'])).toBe(false);
+  });
+
+  it('is false when nobody is connected', () => {
+    expect(allReady([], [])).toBe(false);
   });
 });

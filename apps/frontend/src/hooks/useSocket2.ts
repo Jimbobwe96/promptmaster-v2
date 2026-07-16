@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useRouter } from 'next/navigation';
 import type { ClientToServerEvents2, ServerToClientEvents2, Lobby2, LobbyError } from '@promptmaster/shared';
 
 type SocketType = Socket<ServerToClientEvents2, ClientToServerEvents2>;
@@ -44,7 +43,6 @@ export const useSocket2 = ({
   url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
   autoConnect = false
 }: UseSocket2Props = {}): UseSocket2Return => {
-  const router = useRouter();
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -91,14 +89,9 @@ export const useSocket2 = ({
           }
         });
 
-        globalSocket.on('lobby:kicked', () => {
-          console.log('You have been kicked from the lobby');
-          const code = window.location.pathname.split('/').pop();
-          if (code) {
-            sessionStorage.removeItem(`lobby:${code}`);
-          }
-          router.push('/');
-        });
+        // Note: `lobby:kicked` is handled per-page (lobby page), not here — registering it
+        // inside connect() is unreliable because the early-return path above skips it and
+        // removeAllListeners() on cleanup wipes it.
 
         // If socket exists but isn't connected, try to connect
         if (!globalSocket.connected) {
@@ -111,7 +104,7 @@ export const useSocket2 = ({
         reject(error);
       }
     });
-  }, [url, router]);
+  }, [url]);
 
   const validateLobby = useCallback((code: string, username: string) => {
     return new Promise<Lobby2>((resolve, reject) => {

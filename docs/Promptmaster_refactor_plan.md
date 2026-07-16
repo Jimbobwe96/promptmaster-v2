@@ -79,17 +79,38 @@ _Living roadmap for finishing the v2 rewrite. Started 2026-06-07._
 - **Loop boundary:** a game now plays through guessing and pauses at `scoring` (scoring lands in
   Phase 3). Unit tests: 29 passing. Full multi-client e2e deferred until scoring completes the loop.
 
-### Phase 3 — Scoring (Claude)
-- In the `scoring` phase, call Claude with structured output to score each guess 0–100.
-- Pure: `applyScores(round, scores)`, `rollUpTotals(rounds) → scores[]` (keyed by **username**).
-- Verify scores computed, stored, and survive reconnect.
+### Phase 3 — Scoring (Claude) ✅
+- `scoring` phase fires `scoreRound` (side effect, like image gen): builds an indexed list of
+  guesses, calls Claude (`@anthropic-ai/sdk`, `claude-opus-4-8`) via `output_config.format`
+  structured JSON output (no regex parse, no random fallback), then advances to `results`.
+  On any error it still advances to results so the game never stalls.
+- Pure: `applyScores(round, scoresByUsername)`, `rollUpTotals(rounds, usernames) → scores[]`,
+  both keyed by **username**. `initializeGame` now seeds `scores` by username too — fixes the
+  scores-keyed-by-socket-id bug; scores survive reconnection.
+- Scoring uses **no thinking** (Opus 4.8 default) for short latency at the spinner. Used the raw
+  JSON-schema form of `output_config.format` (not the Zod helper) to avoid coupling to Zod v4 —
+  backend is on Zod v3.
+- **Provider-pluggable** (`scoring.ts`): `SCORING_PROVIDER` env var picks `openai` (default,
+  `OPENAI_API_KEY`, gpt-4o) or `anthropic` (`ANTHROPIC_API_KEY`, claude-opus-4-8). Same
+  structured-JSON contract for both; clients are lazily constructed so the unconfigured SDK never
+  throws. Model IDs are one-line constants. To switch to Claude later: add the key, set the env var.
+- A game now plays all the way through to **results** and pauses there (Phase 4 = ready-up/next round).
+- Unit tests: 33 passing.
 
-### Phase 4 — Results, ready-up, next round, end game
-- Implement `handlePlayerReady` (pure `allReady`) + ready-phase timeout.
-- On all-ready or results deadline: `createNewRound` or `endGame` (via `isGameComplete`).
-- Wire `game:ready_state_update` and `game:ended`.
-- Frontend: wire the 4 STUB listeners in the game page; finish `ScoringPhase` UI.
-- Verify a full multi-round game start → finish.
+### Phase 4 — Results, ready-up, next round, end game ✅
+- `handlePlayerReady` records ready (pure `addReady`), broadcasts `game:ready_state_update`, and
+  advances when `allReady` (pure). `handleReadyPhaseTimeout` advances on the results deadline.
+- `advanceAfterResults` → `createNewRound` or `endGame` (`isGameComplete`), guarded by an
+  `advancing` set + a `phase === 'results'` check so all-ready and the deadline tick can't
+  double-advance.
+- **Fixed results-UI identity bugs:** `ImageSection` and `LeaderboardSection` matched players by
+  socket `id`; switched to `username` (the empty leaderboard + missing prompter name).
+- **Fixed broken Ready Up:** `LeaderboardSection` used the v1 `useSocket` (a different, unvalidated
+  socket) — now takes `currentUsername` + `onReady` props; the game page emits `game:mark_ready`
+  on the live v2 socket. `game:ended` now redirects players back to `/lobby/[code]`.
+- Fixed `isLastRound` (was `rounds === prompters`; now `>= prompters * roundsPerPlayer`).
+- Deleted dead `page_old.tsx` (was breaking the typecheck after the prop change).
+- A full multi-round game now plays start → finish. Unit tests: 38 passing.
 
 ### Phase 5 — Reconnection hardening + cleanup
 - Verify dc/rc across every phase with username identity.

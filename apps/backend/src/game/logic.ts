@@ -90,6 +90,45 @@ export function allGuessesIn(round: GameRound2): boolean {
   return round.guesses.length >= (round.expectedGuessCount ?? 0);
 }
 
+// ==================== Scoring ====================
+
+/** Attach scores (keyed by username) to a round's guesses, returning a new round. */
+export function applyScores(round: GameRound2, scoresByUsername: Map<string, number>): GameRound2 {
+  return {
+    ...round,
+    guesses: round.guesses.map((g) => ({ ...g, score: scoresByUsername.get(g.username) ?? g.score ?? 0 }))
+  };
+}
+
+/**
+ * Sum each player's guess scores across all rounds into game totals.
+ * Seeded from `usernames` so every player appears (at 0) even before they've scored.
+ * Keyed by username — the domain identity — not socket id.
+ */
+export function rollUpTotals(rounds: GameRound2[], usernames: string[]): { playerId: string; totalScore: number }[] {
+  const totals = new Map<string, number>(usernames.map((u) => [u, 0]));
+  for (const round of rounds) {
+    for (const g of round.guesses) {
+      if (typeof g.score === 'number') {
+        totals.set(g.username, (totals.get(g.username) ?? 0) + g.score);
+      }
+    }
+  }
+  return [...totals.entries()].map(([playerId, totalScore]) => ({ playerId, totalScore }));
+}
+
+// ==================== Ready-up (results phase) ====================
+
+/** Add a player to the ready list (idempotent), returning a new array. */
+export function addReady(readyPlayers: string[], username: string): string[] {
+  return readyPlayers.includes(username) ? readyPlayers : [...readyPlayers, username];
+}
+
+/** Whether every currently-connected player has readied up. */
+export function allReady(readyPlayers: string[], connectedUsernames: string[]): boolean {
+  return connectedUsernames.length > 0 && connectedUsernames.every((u) => readyPlayers.includes(u));
+}
+
 // ==================== Information hiding (redaction) ====================
 
 /** Phases in which the round's secrets are public — nothing to hide anymore. */

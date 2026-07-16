@@ -10,6 +10,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.102.0",
     "@fal-ai/client": "^1.0.4",
     "@types/express": "^5.0.0",
     "cors": "^2.8.5",
